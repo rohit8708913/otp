@@ -4,6 +4,8 @@ from pyrogram import __version__
 from bot import Bot
 from config import OWNER_ID
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
+from config import PRICE1, PRICE2, PRICE3, PRICE4, PRICE5, UPI_ID, UPI_IMAGE_URL, SCREENSHOT_URL
+
 
 @Bot.on_callback_query()
 async def cb_handler(client: Bot, query: CallbackQuery):
