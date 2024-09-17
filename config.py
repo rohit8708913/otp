@@ -3,6 +3,8 @@ import os
 import logging
 from logging.handlers import RotatingFileHandler
 from dotenv import load_dotenv
+from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+
 
 
 
@@ -59,11 +61,23 @@ CUSTOM_CAPTION = os.environ.get("CUSTOM_CAPTION", " <b> {filename} • ʙʏ @roh
 #set True if you want to prevent users from forwarding files from bot
 PROTECT_CONTENT = True if os.environ.get('FALSE', "False") == "True" else False
 
+#==========================(BUY PREMIUM)====================#
+
+PREMIER BUTTON = reply_markup=InlineKeyboardMarkup(
+        [[InlineKeyboardButton("Remove Ads In One Click", callback_data="buy_prem")]]
+)
+
+
 #Set true if you want Disable your Channel Posts Share button
 DISABLE_CHANNEL_BUTTON = os.environ.get("True", True) == 'True'
 
 BOT_STATS_TEXT = "<b>BOT UPTIME</b>\n{uptime}"
 USER_REPLY_TEXT = "❌Don't send me messages directly I'm only your dad!"
+
+
+
+
+
 
 ADMINS.append(OWNER_ID)
 
