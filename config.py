@@ -63,7 +63,7 @@ PROTECT_CONTENT = True if os.environ.get('FALSE', "False") == "True" else False
 
 #==========================(BUY PREMIUM)====================#
 
-PREMIER BUTTON = reply_markup=InlineKeyboardMarkup(
+PREMIUM_BUTTON = reply_markup=InlineKeyboardMarkup(
         [[InlineKeyboardButton("Remove Ads In One Click", callback_data="buy_prem")]]
 )
 
