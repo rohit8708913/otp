@@ -71,6 +71,39 @@ PREMIUM_BUTTON2 = reply_markup=InlineKeyboardMarkup(
         [[InlineKeyboardButton("Remove Ads In One Click", callback_data="buy_prem")]]
 ) 
 
+OWNER_TAG = os.environ.get("OWNER_TAG", "rohit_1888")
+
+#UPI ID
+UPI_ID = os.environ.get("UPI_ID", "rohit23pnb@axl")
+
+#UPI QR CODE IMAGE
+UPI_IMAGE_URL = os.environ.get("UPI_IMAGE_URL", "https://t.me/paymentbot6/2")
+
+#SCREENSHOT URL of ADMIN for verification of payments
+SCREENSHOT_URL = os.environ.get("SCREENSHOT_URL", f"t.me/{OWNER_TAG}")
+
+
+
+#Time and its price
+
+#7 Days
+PRICE1 = os.environ.get("PRICE1", "20 rs")
+
+#1 Month
+PRICE2 = os.environ.get("PRICE2", "49 rs")
+
+#3 Month
+PRICE3 = os.environ.get("PRICE3", "135 rs")
+
+#6 Month
+PRICE4 = os.environ.get("PRICE4", "250 rs")
+
+#1 Year
+PRICE5 = os.environ.get("PRICE5", "500 rs")
+
+
+#===================(END)========================#
+
 
 #Set true if you want Disable your Channel Posts Share button
 DISABLE_CHANNEL_BUTTON = os.environ.get("True", True) == 'True'
