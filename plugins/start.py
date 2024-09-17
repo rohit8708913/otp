@@ -14,7 +14,7 @@ from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, 
 from pyrogram.errors import FloodWait, UserIsBlocked, InputUserDeactivated
 
 from bot import Bot
-from config import ADMINS, FORCE_MSG, START_MSG, CUSTOM_CAPTION, DISABLE_CHANNEL_BUTTON, PROTECT_CONTENT, TUT_VID, IS_VERIFY, VERIFY_EXPIRE, SHORTLINK_API, SHORTLINK_URL
+from config import ADMINS, FORCE_MSG, START_MSG, CUSTOM_CAPTION, DISABLE_CHANNEL_BUTTON, PROTECT_CONTENT, TUT_VID, IS_VERIFY, VERIFY_EXPIRE, SHORTLINK_API, SHORTLINK_URL, PREMIUM_BUTTON, PREMIUM_BUTTON2
 from helper_func import subscribed, encode, decode, get_messages, get_shortlink, get_verify_status, update_verify_status, get_exp_time
 from database.database import *
 from database.db_premium import *
@@ -56,12 +56,16 @@ async def start_command(client: Client, message: Message):
             if verify_status['verify_token'] != token:
                 return await message.reply("Your token is invalid or expired. Try again by clicking /start")
             await update_verify_status(id, is_verified=True, verified_time=time.time())
-            await message.reply("Your token successfully verified and valid for: 24 Hour", reply_markup=None, protect_content=False, quote=True)
-
+            await message.reply(
+                "Your token successfully verified and valid for: 24 Hour", 
+                reply_markup=PREMIUM_BUTTON,
+                protect_content=False, 
+                quote=True
+            )
         elif string.startswith("premium"):
             if not is_premium:
                 # Notify user to get premium
-                await message.reply("Buy premium to access this content\nTo Buy Contact @rohit_1888")
+                await message.reply("Buy premium to access this content\nTo Buy Contact @rohit_1888", reply_markup=PREMIUM_BUTTON2)
                 return
             
             # Handle premium logic
@@ -141,8 +145,8 @@ async def start_command(client: Client, message: Message):
                     await update_verify_status(id, verify_token=token, link="")
                     link = await get_shortlink(SHORTLINK_URL, SHORTLINK_API, f'https://telegram.dog/{client.username}?start=verify_{token}')
                     btn = [
-                        [InlineKeyboardButton("Click here", url=link)],
-                        [InlineKeyboardButton('How to use the bot', url=TUT_VID)]
+                        [InlineKeyboardButton("Click here", url=link), InlineKeyboardButton('How to use the bot', url=TUT_VID)],  # First row with two buttons
+                        [InlineKeyboardButton('BUY PREMIUM', callback_data='buy_prem')]  # Second row with one button
                     ]
                     await message.reply(f"Your Ads token is expired or invalid. Please verify to access the files.\n\nToken Timeout: {get_exp_time(VERIFY_EXPIRE)}\n\nWhat is the token?\n\nThis is an ads token. If you pass 1 ad, you can use the bot for 24 Hours after passing the ad.", reply_markup=InlineKeyboardMarkup(btn), protect_content=False, quote=True)
                     return
@@ -220,6 +224,7 @@ async def start_command(client: Client, message: Message):
             reply_markup = InlineKeyboardMarkup(
                 [
                     [InlineKeyboardButton("😊 About Me", callback_data="about"), InlineKeyboardButton("🔒 Close", callback_data="close")]
+                    [InlineKeyboardButton('BUY PREMIUM', callback_data='buy_prem')]
                 ]
             )
             await message.reply_text(
