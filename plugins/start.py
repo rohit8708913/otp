@@ -19,7 +19,7 @@ from helper_func import subscribed, encode, decode, get_messages, get_shortlink,
 from database.database import *
 from database.db_premium import *
 
-SECONDS = int(os.getenv("SECONDS", "600")) #5_minutes
+SECONDS = int(os.getenv("SECONDS", "")) #5_minutes
 
 # Enable logging
 logging.basicConfig(level=logging.INFO)
@@ -106,9 +106,11 @@ async def start_command(client: Client, message: Message):
             snt_msgs = []
             for msg in messages:
                 if bool(CUSTOM_CAPTION) & bool(msg.document):
-                    caption = CUSTOM_CAPTION.format(previouscaption="" if not msg.caption else msg.caption.html, filename=msg.document.file_name)
+                    original_caption = msg.caption.html if msg.caption else ""
+                if CUSTOM_CAPTION:
+                    caption = f"{original_caption}\n\n{CUSTOM_CAPTION}"
                 else:
-                    caption = "" if not msg.caption else msg.caption.html
+                    caption = original_caption
 
                 if DISABLE_CHANNEL_BUTTON:
                     reply_markup = msg.reply_markup
@@ -126,17 +128,7 @@ async def start_command(client: Client, message: Message):
                 except:
                     pass
 
-            print("Starting Delete Process")
-            get = f"https://t.me/{client.username}?start={message.command[1]}"
-            await message.reply_text(f"Files will be deleted in 10 minutes.\nForward to saved messages before downloading\n[ClickHere]({get}) to get it again", parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
-            await asyncio.sleep(SECONDS)
-
-            for snt_msg in snt_msgs:
-                try:
-                    await snt_msg.delete()
-                except:
-                    pass
-            return
+            
 
         elif string.startswith("get"):
             if not is_premium:
@@ -188,9 +180,11 @@ async def start_command(client: Client, message: Message):
             snt_msgs = []
             for msg in messages:
                 if bool(CUSTOM_CAPTION) & bool(msg.document):
-                    caption = CUSTOM_CAPTION.format(previouscaption="" if not msg.caption else msg.caption.html, filename=msg.document.file_name)
+                    original_caption = msg.caption.html if msg.caption else ""
+                if CUSTOM_CAPTION:
+                    caption = f"{original_caption}\n\n{CUSTOM_CAPTION}"
                 else:
-                    caption = "" if not msg.caption else msg.caption.html
+                    caption = original_caption
 
                 if DISABLE_CHANNEL_BUTTON:
                     reply_markup = msg.reply_markup
@@ -207,18 +201,7 @@ async def start_command(client: Client, message: Message):
                     snt_msgs.append(snt_msg)
                 except:
                     pass
-
-            print("Starting Delete Process")
-            get = f"https://t.me/{client.username}?start={message.command[1]}"
-            await message.reply_text(f"Files will be deleted in 10 minutes.\nForward to saved messages before downloading\n[ClickHere]({get}) to get it again", parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
-            await asyncio.sleep(SECONDS)
-
-            for snt_msg in snt_msgs:
-                try:
-                    await snt_msg.delete()
-                except:
-                    pass
-            return
+
     else:
         try:
             reply_markup = InlineKeyboardMarkup(
