@@ -18,7 +18,8 @@ from config import ADMINS, FORCE_MSG, START_MSG, CUSTOM_CAPTION, DISABLE_CHANNEL
 from helper_func import subscribed, encode, decode, get_messages, get_shortlink, get_verify_status, update_verify_status, get_exp_time
 from database.database import *
 from database.db_premium import *
-
+
+
 
 # Enable logging
 logging.basicConfig(level=logging.INFO)
@@ -178,7 +179,7 @@ async def start_command(client: Client, message: Message):
             await temp_msg.delete()
             snt_msgs = []
             for msg in messages:
-                 original_caption = msg.caption.html if msg.caption else ""
+                original_caption = msg.caption.html if msg.caption else ""
                 if CUSTOM_CAPTION:
                     caption = f"{original_caption}\n\n{CUSTOM_CAPTION}"
                 else:
@@ -199,7 +200,8 @@ async def start_command(client: Client, message: Message):
                     snt_msgs.append(snt_msg)
                 except:
                     pass
-
+
+
     else:
         try:
             reply_markup = InlineKeyboardMarkup(
