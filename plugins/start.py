@@ -104,7 +104,7 @@ async def start_command(client: Client, message: Message):
             await temp_msg.delete()
             snt_msgs = []
             for msg in messages:
-                original_caption = msg.caption.html if msg.caption else ""
+               original_caption = msg.caption.html if msg.caption else ""
                 if CUSTOM_CAPTION:
                     caption = f"{original_caption}\n\n{CUSTOM_CAPTION}"
                 else:
