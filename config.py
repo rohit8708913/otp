@@ -67,6 +67,10 @@ PREMIUM_BUTTON = reply_markup=InlineKeyboardMarkup(
         [[InlineKeyboardButton("Remove Ads In One Click", callback_data="buy_prem")]]
 )
 
+PREMIUM_BUTTON2 = reply_markup=InlineKeyboardMarkup(
+        [[InlineKeyboardButton("Remove Ads In One Click", callback_data="buy_prem")]]
+) 
+
 
 #Set true if you want Disable your Channel Posts Share button
 DISABLE_CHANNEL_BUTTON = os.environ.get("True", True) == 'True'
