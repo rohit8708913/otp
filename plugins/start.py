@@ -18,6 +18,7 @@ from config import ADMINS, FORCE_MSG, START_MSG, CUSTOM_CAPTION, DISABLE_CHANNEL
 from helper_func import subscribed, encode, decode, get_messages, get_shortlink, get_verify_status, update_verify_status, get_exp_time
 from database.database import *
 from database.db_premium import *
+from config import *
 
 
 
@@ -210,17 +211,16 @@ async def start_command(client: Client, message: Message):
                     [InlineKeyboardButton('BUY PREMIUM', callback_data='buy_prem')]
                 ]
             )
-            await message.reply_text(
-                text=START_MSG.format(
+            await message.reply_photo(
+              photo=START_PIC,
+                caption=START_MSG.format(
                     first=message.from_user.first_name,
                     last=message.from_user.last_name,
                     username=None if not message.from_user.username else '@' + message.from_user.username,
                     mention=message.from_user.mention,
                     id=message.from_user.id
                 ),
-                reply_markup=reply_markup,
-                disable_web_page_preview=True,
-                quote=True
+                reply_markup=reply_markup,
             )
         except Exception as e:
             print(e)
@@ -255,17 +255,16 @@ async def not_joined(client: Client, message: Message):
     except IndexError:
         pass
 
-    await message.reply(
-        text = FORCE_MSG.format(
+    await message.reply_photo(
+       photo = FORCE_PIC,
+        caption = FORCE_MSG.format(
                 first = message.from_user.first_name,
                 last = message.from_user.last_name,
                 username = None if not message.from_user.username else '@' + message.from_user.username,
                 mention = message.from_user.mention,
                 id = message.from_user.id
             ),
-        reply_markup = InlineKeyboardMarkup(buttons),
-        quote = True,
-        disable_web_page_preview = True
+        reply_markup = InlineKeyboardMarkup(buttons),
     )
 
 @Bot.on_message(filters.command('users') & filters.private & filters.user(ADMINS))
