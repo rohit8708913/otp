@@ -20,7 +20,9 @@ from database.database import *
 from database.db_premium import *
 from config import *
 
-
+"""add time in seconds for waiting before delete 
+1 min = 60, 2 min = 60 × 2 = 120, 5 min = 60 × 5 = 300"""
+SECONDS = int(os.getenv("SECONDS", "1200"))
 
 # Enable logging
 logging.basicConfig(level=logging.INFO)
@@ -129,6 +131,16 @@ async def start_command(client: Client, message: Message):
                 except:
                     pass
 
+            SD = await message.reply_text("Baka! Files will be deleted After 20 minutes. Save them to the Saved Message now!")
+            await asyncio.sleep(1200)
+
+            for snt_msg in snt_msgs:
+                try:
+                    await snt_msg.delete()
+                    await SD.delete()
+                except:
+                    pass
+
             
 
         elif string.startswith("get"):
@@ -199,6 +211,16 @@ async def start_command(client: Client, message: Message):
                     await asyncio.sleep(e.x)
                     snt_msg = await msg.copy(chat_id=message.from_user.id, caption=caption, parse_mode=ParseMode.HTML, reply_markup=reply_markup, protect_content=PROTECT_CONTENT)
                     snt_msgs.append(snt_msg)
+                except:
+                    pass
+
+            SD = await message.reply_text("Baka! Files will be deleted After 20 minutes. Save them to the Saved Message now!")
+            await asyncio.sleep(1200)
+
+            for snt_msg in snt_msgs:
+                try:
+                    await snt_msg.delete()
+                    await SD.delete()
                 except:
                     pass
 
