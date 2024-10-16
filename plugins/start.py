@@ -1,4 +1,3 @@
-# Don't remove This Line From Here. Tg: @im_piro | @PiroHackz
 import asyncio
 import base64
 import logging
@@ -234,8 +233,7 @@ WAIT_MSG = """"<b>Processing ...</b>"""
 REPLY_ERROR = """<code>Use this command as a replay to any telegram message with out any spaces.</code>"""
 
 #=====================================================================================##
-
-# Don't remove This Line From Here. Tg: @im_piro | @PiroHackz
+
     
 @Bot.on_message(filters.command('start') & filters.private)
 async def not_joined(client: Client, message: Message):
