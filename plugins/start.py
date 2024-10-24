@@ -40,8 +40,10 @@ async def start_command(client: Client, message: Message):
 
     text = message.text
     verify_status = await get_verify_status(id)
+    if verify_status['is_verified'] and VERIFY_EXPIRE < (time.time() - verify_status['verified_time']):
+        await update_verify_status(id, is_verified=False)
     is_premium = await is_premium_user(id)
-
+    
     logging.info(f"Verify status: {verify_status}")
     logging.info(f"Is premium: {is_premium}")
 
