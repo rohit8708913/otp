@@ -9,7 +9,7 @@ from pyrogram.enums import ParseMode
 import sys
 from datetime import datetime
 
-from config import API_HASH, APP_ID, LOGGER, TG_BOT_TOKEN, TG_BOT_WORKERS, FORCE_SUB_CHANNEL, CHANNEL_ID, PORT, FORCESUB_CHANNEL2
+from config import API_HASH, APP_ID, LOGGER, TG_BOT_TOKEN, TG_BOT_WORKERS, FORCE_SUB_CHANNEL, CHANNEL_ID, PORT, FORCE_SUB_CHANNEL2
 from dotenv import load_dotenv
 from database.db_premium import remove_expired_users
 
@@ -49,17 +49,17 @@ class Bot(Client):
                 self.LOGGER(__name__).warning(f"Please Double check the FORCE_SUB_CHANNEL value and Make sure Bot is Admin in channel with Invite Users via Link Permission, Current Force Sub Channel Value: {FORCE_SUB_CHANNEL}")
                 self.LOGGER(__name__).info("\nBot Stopped. @im_piro for support")
                 sys.exit()
-        if FORCESUB_CHANNEL2:
+        if FORCE_SUB_CHANNEL2:
             try:
-                link = (await self.get_chat(FORCESUB_CHANNEL2)).invite_link
+                link = (await self.get_chat(FORCE_SUB_CHANNEL2)).invite_link
                 if not link:
-                    await self.export_chat_invite_link(FORCESUB_CHANNEL2)
-                    link = (await self.get_chat(FORCESUB_CHANNEL2)).invite_link
+                    await self.export_chat_invite_link(FORCE_SUB_CHANNEL2)
+                    link = (await self.get_chat(FORCE_SUB_CHANNEL2)).invite_link
                 self.invitelink2 = link
             except Exception as a:
                 self.LOGGER(__name__).warning(a)
                 self.LOGGER(__name__).warning("Bot can't Export Invite link from Force Sub Channel!")
-                self.LOGGER(__name__).warning(f"Please Double check the FORCESUB_CHANNEL2 value and Make sure Bot is Admin in channel with Invite Users via Link Permission, Current Force Sub Channel Value: {FORCESUB_CHANNEL2}")
+                self.LOGGER(__name__).warning(f"Please Double check the FORCE_SUB_CHANNEL2 value and Make sure Bot is Admin in channel with Invite Users via Link Permission, Current Force Sub Channel Value: {FORCE_SUB_CHANNEL2}")
                 self.LOGGER(__name__).info("\nBot Stopped. Dm https://t.me/im_piro for support")
                 sys.exit()
         try:
