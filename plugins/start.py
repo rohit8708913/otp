@@ -40,6 +40,7 @@ async def start_command(client: Client, message: Message):
     verify_status = await get_verify_status(id)
     if verify_status['is_verified'] and VERIFY_EXPIRE < (time.time() - verify_status['verified_time']):
         await update_verify_status(id, is_verified=False)
+
     is_premium = await is_premium_user(id)
     
     logging.info(f"Verify status: {verify_status}")
@@ -130,16 +131,18 @@ async def start_command(client: Client, message: Message):
                     snt_msgs.append(snt_msg)
                 except:
                     pass
-if (SECONDS == 0):
-                    return
-                notification_msg = await message.reply(f"<b>🌺 <u>Notice</u> 🌺</b>\n\n<b>This file will be  deleted in {get_exp_time(SECONDS)}. Please save or forward it to your saved messages before it gets deleted.</b>")
-                await asyncio.sleep(SECONDS)    
-                for snt_msg in snt_msgs:    
-                    try:    
-                        await snt_msg.delete()  
-                    except: 
-                        pass    
-                await notification_msg.edit("<b>Your file has been successfully deleted! 😼</b>")  
+
+            if SECONDS == 0:
+                return
+
+            notification_msg = await message.reply(f"<b>🌺 <u>Notice</u> 🌺</b>\n\n<b>This file will be deleted in {get_exp_time(SECONDS)}. Please save or forward it to your saved messages before it gets deleted.</b>")
+            await asyncio.sleep(SECONDS)    
+            for snt_msg in snt_msgs:    
+                try:    
+                    await snt_msg.delete()  
+                except: 
+                    pass    
+            await notification_msg.edit("<b>Your file has been successfully deleted! 😼</b>")  
             return
 
         elif string.startswith("get"):
@@ -212,16 +215,18 @@ if (SECONDS == 0):
                     snt_msgs.append(snt_msg)
                 except:
                     pass
-if (SECONDS == 0):
-                    return
-                notification_msg = await message.reply(f"<b>🌺 <u>Notice</u> 🌺</b>\n\n<b>This file will be  deleted in {get_exp_time(SECONDS)}. Please save or forward it to your saved messages before it gets deleted.</b>")
-                await asyncio.sleep(SECONDS)    
-                for snt_msg in snt_msgs:    
-                    try:    
-                        await snt_msg.delete()  
-                    except: 
-                        pass    
-                await notification_msg.edit("<b>Your file has been successfully deleted! 😼</b>")  
+
+            if SECONDS == 0:
+                return
+
+            notification_msg = await message.reply(f"<b>🌺 <u>Notice</u> 🌺</b>\n\n<b>This file will be deleted in {get_exp_time(SECONDS)}. Please save or forward it to your saved messages before it gets deleted.</b>")
+            await asyncio.sleep(SECONDS)    
+            for snt_msg in snt_msgs:    
+                try:    
+                    await snt_msg.delete()  
+                except: 
+                    pass    
+            await notification_msg.edit("<b>Your file has been successfully deleted! 😼</b>")  
             return
     else:
         try:
@@ -232,15 +237,15 @@ if (SECONDS == 0):
                 ]
             )
             await message.reply_photo(
-              photo=START_PIC,
-              caption=START_MSG.format(
-                  first=message.from_user.first_name,
-                  last=message.from_user.last_name,
-                  username=None if not message.from_user.username else '@' + message.from_user.username,
-                  mention=message.from_user.mention,
-                  id=message.from_user.id
-              ),
-              reply_markup=reply_markup,
+                photo=START_PIC,
+                caption=START_MSG.format(
+                    first=message.from_user.first_name,
+                    last=message.from_user.last_name,
+                    username=None if not message.from_user.username else '@' + message.from_user.username,
+                    mention=message.from_user.mention,
+                    id=message.from_user.id
+                ),
+                reply_markup=reply_markup,
             )
         except Exception as e:
             print(e)
