@@ -13,15 +13,13 @@ from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, 
 from pyrogram.errors import FloodWait, UserIsBlocked, InputUserDeactivated
 
 from bot import Bot
-from config import ADMINS, FORCE_MSG, START_MSG, CUSTOM_CAPTION, DISABLE_CHANNEL_BUTTON, PROTECT_CONTENT, TUT_VID, IS_VERIFY, VERIFY_EXPIRE, SHORTLINK_API, SHORTLINK_URL, PREMIUM_BUTTON, PREMIUM_BUTTON2
+from config import ADMINS, FORCE_MSG, START_MSG, CUSTOM_CAPTION, DISABLE_CHANNEL_BUTTON, PROTECT_CONTENT, TUT_VID, IS_VERIFY, VERIFY_EXPIRE, SHORTLINK_API, SHORTLINK_URL, PREMIUM_BUTTON, PREMIUM_BUTTON2, TIME
 from helper_func import subscribed, encode, decode, get_messages, get_shortlink, get_verify_status, update_verify_status, get_exp_time
 from database.database import *
 from database.db_premium import *
 from config import *
 
-"""add time in seconds for waiting before delete 
-1 min = 60, 2 min = 60 × 2 = 120, 5 min = 60 × 5 = 300"""
-SECONDS = int(os.getenv("SECONDS", "1200"))
+SECONDS = TIME 
 
 # Enable logging
 logging.basicConfig(level=logging.INFO)
