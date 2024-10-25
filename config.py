@@ -92,7 +92,7 @@ SCREENSHOT_URL = os.environ.get("SCREENSHOT_URL", f"t.me/{OWNER_TAG}")
 #Time and its price
 
 #7 Days
-PRICE1 = os.environ.get("PRICE1", "20 rs")
+PRICE1 = os.environ.get("PRICE1", "0 rs")
 
 #1 Month
 PRICE2 = os.environ.get("PRICE2", "49 rs")
