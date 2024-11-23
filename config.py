@@ -9,7 +9,7 @@ from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 
 #Bot token @Botfather
-TG_BOT_TOKEN = os.environ.get("TG_BOT_TOKEN", "7223199796:AAHfoauOGJcmBGBoUqDRRSQEQb-kwyqEtlg")
+TG_BOT_TOKEN = os.environ.get("TG_BOT_TOKEN", "7223199796:AAEaCBADe6p7RjlYBSa_YuolW_gZgNw-dCs")
 
 #Your API ID from my.telegram.org
 APP_ID = int(os.environ.get("APP_ID", "25839862"))
