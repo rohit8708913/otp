@@ -28,7 +28,10 @@ async def cb_handler(client: Bot, query: CallbackQuery):
         except:
             pass
     elif data == "buy_prem":
-        await query.message.edit_photo(
+        # Delete the current message and send a new one with the photo
+        await query.message.delete()
+        await client.send_photo(
+            chat_id=query.message.chat.id,
             photo=QR_PIC,
             caption=(
                 f"👋 {query.from_user.username}\n\n"
