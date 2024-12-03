@@ -1,5 +1,6 @@
-#(©)Codexbotz
+#Javpostr | @rohit_1888 on Tg
 
+import asyncio
 from aiohttp import web
 from plugins import web_server
 
@@ -14,9 +15,6 @@ from dotenv import load_dotenv
 from database.db_premium import remove_expired_users
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-scheduler = AsyncIOScheduler()
-scheduler.add_job(remove_expired_users, "interval", seconds=3600)
-scheduler.start()
 
 load_dotenv(".env")
 
@@ -47,7 +45,7 @@ class Bot(Client):
                 self.LOGGER(__name__).warning(a)
                 self.LOGGER(__name__).warning("Bot can't Export Invite link from Force Sub Channel!")
                 self.LOGGER(__name__).warning(f"Please Double check the FORCE_SUB_CHANNEL value and Make sure Bot is Admin in channel with Invite Users via Link Permission, Current Force Sub Channel Value: {FORCE_SUB_CHANNEL}")
-                self.LOGGER(__name__).info("\nBot Stopped. @im_piro for support")
+                self.LOGGER(__name__).info("\nBot Stopped. @rohit_1888 for support")
                 sys.exit()
         if FORCE_SUB_CHANNEL2:
             try:
@@ -60,12 +58,12 @@ class Bot(Client):
                 self.LOGGER(__name__).warning(a)
                 self.LOGGER(__name__).warning("Bot can't Export Invite link from Force Sub Channel!")
                 self.LOGGER(__name__).warning(f"Please Double check the FORCE_SUB_CHANNEL2 value and Make sure Bot is Admin in channel with Invite Users via Link Permission, Current Force Sub Channel Value: {FORCE_SUB_CHANNEL2}")
-                self.LOGGER(__name__).info("\nBot Stopped. Dm https://t.me/im_piro for support")
+                self.LOGGER(__name__).info("\nBot Stopped. Dm https://t.me/rohit_1888 for support")
                 sys.exit()
         try:
             db_channel = await self.get_chat(CHANNEL_ID)
             self.db_channel = db_channel
-            
+
         except Exception as e:
             self.LOGGER(__name__).warning(e)
             self.LOGGER(__name__).warning(f"Make Sure bot is Admin in DB Channel, and Double check the CHANNEL_ID Value, Current Value {CHANNEL_ID}")
@@ -85,3 +83,17 @@ class Bot(Client):
     async def stop(self, *args):
         await super().stop()
         self.LOGGER(__name__).info("Bot stopped. Made By @rohit_1888")
+
+async def main():
+    scheduler = AsyncIOScheduler()
+    scheduler.add_job(remove_expired_users, "interval", seconds=3600)
+    scheduler.start()
+
+    bot = Bot()
+    await bot.start()
+    
+    # Keep the program running to let jobs execute
+    await asyncio.Event().wait()
+
+if __name__ == "__main__":
+    asyncio.run(main())
