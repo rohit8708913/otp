@@ -43,6 +43,10 @@ FORCE_SUB_CHANNEL = int(os.environ.get("FORCE_SUB_CHANNEL", "-1002215102799"))
 FORCE_SUB_CHANNEL2 = int(os.environ.get("FORCESUB_CHANNEL2", "-1002485124074"))
 
 
+NOTIFICATION_TIME_SECONDS = int(os.getenv("NOTIFICATION_TIME_SECONDS", 60))  # Default to 1 hour
+NOTIFICATION_INTERVAL_SECONDS = int(os.getenv("NOTIFICATION_INTERVAL_SECONDS", 30))  # Default to 30 minutes
+
+
 TG_BOT_WORKERS = int(os.environ.get("TG_BOT_WORKERS", "4"))
 
 START_PIC = os.environ.get("START_PIC", "https://telegra.ph/file/ec17880d61180d3312d6a.jpg")
