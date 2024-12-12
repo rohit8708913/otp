@@ -383,6 +383,21 @@ async def pre_remove_user(client: Client, msg: Message):
     except ValueError:
         await msg.reply_text("user_id must be an integer or not available in database.")
 
+
+# Command to remove premium user
+@Bot.on_message(filters.private & filters.command('removepaid') & filters.user(ADMINS))
+async def pre_remove_user(client: Client, msg: Message):
+    if len(msg.command) != 2:
+        await msg.reply_text("usage: /removeuser user_id")
+        return
+    try:
+        user_id = int(msg.command[1])
+        # Remove the user from the database
+        await remove_premium(user_id)
+        await msg.reply_text(f"User {user_id} has been removed.")
+    except ValueError:
+        await msg.reply_text("user_id must be an integer or not available in database.")
+
 @Bot.on_message(filters.private & filters.command('listpaid') & filters.user(ADMINS))
 async def list_premium_users_command(client, message):
     premium_users = collection.find({})
