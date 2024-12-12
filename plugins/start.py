@@ -468,14 +468,12 @@ async def list_premium_users_command(client, message):
 
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.interval import IntervalTrigger
+import time
+from datetime import datetime
 
-
-
-# Function to send notification to users about upcoming expiration
-async def notify_premium_expiry():
+async def notify_premium_expiry(client):
     current_time = time.time()
-    reminder_window = 1 * 60  # Notify 5 minutes before expiration
+    reminder_window = 1 * 60  # Notify 1 minutes before expiration
 
     # Fetch premium users
     premium_users_cursor = collection.find({})
@@ -498,21 +496,18 @@ async def notify_premium_expiry():
                 # Send reminder message
                 await client.send_message(
                     chat_id=user_id,
-                    text=f"⚠️ Your premium status is about to expire in 1 minute. Please renew to continue enjoying premium features. \n\n"
-                         f"To extend your premium subscription. Contact @rohit_1888"
+                    text=f"⚠️ Your premium status is about to expire in 1 minutes. Please renew to continue enjoying premium features. \n\n"
+                         f"Type /renew to extend your premium subscription."
                 )
                 print(f"Sent reminder to user {user_id} about expiration.")
 
         except Exception as e:
             print(f"Error while processing user {user_id}: {str(e)}")
 
-# Scheduling the task to check every minute
-scheduler = AsyncIOScheduler()
-scheduler.add_job(
-    notify_premium_expiry,
-    trigger=IntervalTrigger(minutes=1),
-    id="premium_expiry_reminder",  # Job ID for potential removal
-    name="Notify users about premium expiration",
-    replace_existing=True,
-)
-scheduler.start()
+# Example of how you might call this with apscheduler
+async def start_scheduled_task(client):
+    scheduler = AsyncIOScheduler()
+    
+    # Schedule the job to notify users every minute (or any other interval)
+    scheduler.add_job(lambda: notify_premium_expiry(client), 'interval', minutes=1)
+    scheduler.start()
