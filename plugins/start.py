@@ -464,3 +464,53 @@ async def list_premium_users_command(client, message):
         await message.reply_text("I found 0 active premium users in my DB")
     else:
         await message.reply_text("\n\n".join(premium_user_list), parse_mode=None)
+
+
+
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.interval import IntervalTrigger
+
+
+
+# Function to send notification to users about upcoming expiration
+async def notify_premium_expiry():
+    current_time = time.time()
+    reminder_window = 1 * 60  # Notify 5 minutes before expiration
+
+    # Fetch premium users
+    premium_users_cursor = collection.find({})
+    
+    # Check for users whose premium is about to expire
+    async for user in premium_users_cursor:
+        user_id = user["user_id"]
+        expiration_timestamp = user["expiration_timestamp"]
+
+        try:
+            # Convert expiration_timestamp to datetime
+            expiration_time = datetime.fromisoformat(expiration_timestamp)
+            expiration_timestamp_unix = expiration_time.timestamp()
+
+            # If the premium is about to expire, send a reminder
+            if expiration_timestamp_unix - current_time <= reminder_window:
+                # Send reminder message
+                await client.send_message(
+                    chat_id=user_id,
+                    text=f"⚠️ Your premium status is about to expire in 1 minutes. Please renew to continue enjoying premium features. \n\n"
+                         f"Type /renew to extend your premium subscription."
+                )
+                # Optionally, log that the message was sent
+                print(f"Sent reminder to user {user_id} about expiration.")
+
+        except Exception as e:
+            print(f"Error while processing user {user_id}: {str(e)}")
+
+# Scheduling the task to check every minute
+scheduler = AsyncIOScheduler()
+scheduler.add_job(
+    notify_premium_expiry,
+    trigger=IntervalTrigger(minutes=1),
+    id="premium_expiry_reminder",  # Job ID for potential removal
+    name="Notify users about premium expiration",
+    replace_existing=True,
+)
+scheduler.start()
