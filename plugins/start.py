@@ -378,34 +378,14 @@ async def add_premium_user_command(client, msg):
 @Bot.on_message(filters.private & filters.command('removepaid') & filters.user(ADMINS))
 async def pre_remove_user(client: Client, msg: Message):
     if len(msg.command) != 2:
-        await msg.reply_text("Usage: /removepaid <user_id>")
+        await msg.reply_text("useage: /removeuser user_id ")
         return
-
     try:
         user_id = int(msg.command[1])
-
-        # Fetch user info
-        user_info = await collection.find_one({"user_id": user_id})
-        if not user_info:
-            await msg.reply_text(f"User {user_id} is not in the database.")
-            return
-
-        # Check if user is expired
-        current_time = time.time()
-        expiration_time = float(user_info["expiration_timestamp"])
-
-        if expiration_time < current_time:
-            # If expired, remove the user automatically
-            await remove_premium(user_id)
-            await msg.reply_text(f"User {user_id}'s premium had already expired and was automatically removed.")
-        else:
-            # If not expired, remove manually
-            await remove_premium(user_id)
-            await msg.reply_text(f"User {user_id} has been successfully removed from premium.")
+        await remove_premium(user_id)
+        await msg.reply_text(f"User {user_id} has been removed.")
     except ValueError:
-        await msg.reply_text("Invalid user ID. Please provide a valid integer.")
-    except Exception as e:
-        await msg.reply_text(f"An error occurred: {str(e)}")
+        await msg.reply_text("user_id must be an integer or not available in database.")
 
 
 # Command to list active premium users
