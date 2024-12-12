@@ -412,7 +412,8 @@ async def list_premium_users_command(client, message):
     premium_user_list = ['Active Premium Users in database:']
     current_time = time.time()
 
-    async for user in premium_users:
+    # Use a normal for loop instead of async for
+    for user in premium_users:
         user_id = user["user_id"]
         expiration_timestamp = float(user["expiration_timestamp"])
 
@@ -454,4 +455,3 @@ async def list_premium_users_command(client, message):
         await message.reply_text("I found 0 active premium users in my DB")
     else:
         await message.reply_text("\n\n".join(premium_user_list), parse_mode=None)
-
