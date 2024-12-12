@@ -2,6 +2,7 @@ import pymongo
 from datetime import datetime, timedelta
 from config import DB_URI, DB_NAME
 import time 
+import asyncio
 
 dbclient = pymongo.MongoClient(DB_URI)
 database = dbclient[DB_NAME]
@@ -35,9 +36,12 @@ def add_premium(user_id, time_limit_minutes):
         upsert=True
     )
 
+
+
 # List premium users with their remaining time, excluding expired ones
-def list_premium_users():
-    premium_users = collection.find({})
+async def list_premium_users():
+    # Use asyncio.to_thread to run the blocking code in a separate thread
+    premium_users = await asyncio.to_thread(list, collection.find({}))
     premium_user_list = []
 
     for user in premium_users:
