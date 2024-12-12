@@ -3,6 +3,7 @@
 
 
 import time
+import asyncio
 import pymongo, os
 from config import DB_URI, DB_NAME
 from bot import Bot
@@ -92,8 +93,9 @@ def add_premium(user_id, time_limit_minutes):
     )
 
 # List premium users with their remaining time, excluding expired ones
-def list_premium_users():
-    premium_users = collection.find({})
+async def list_premium_users():
+    # Use asyncio.to_thread to run the blocking code in a separate thread
+    premium_users = await asyncio.to_thread(list, collection.find({}))
     premium_user_list = []
 
     for user in premium_users:
@@ -122,5 +124,3 @@ def list_premium_users():
 
     if not premium_user_list:
         return "No active premium users found."
-
-    return premium_user_list
