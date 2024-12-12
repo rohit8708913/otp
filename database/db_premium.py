@@ -1,63 +1,51 @@
-import pymongo
-from datetime import datetime, timedelta
+import motor.motor_asyncio
 from config import DB_URI, DB_NAME
-import time 
-import asyncio
+from datetime import datetime
 
-dbclient = pymongo.MongoClient(DB_URI)
+# Create an async client with Motor
+dbclient = motor.motor_asyncio.AsyncIOMotorClient(DB_URI)
 database = dbclient[DB_NAME]
 collection = database['premium-users']
 
-
-# Check if a user is a premium user
+# Check if the user is a premium user
 async def is_premium_user(user_id):
-    user = await collection.find_one({"user_id": user_id})  # Ensure this is asynchronous
+    user = await collection.find_one({"user_id": user_id})  # Async query
     return user is not None
 
-# Remove premium user by user_id
-def remove_premium(user_id):
-    collection.delete_one({"user_id": user_id})
+# Remove premium user
+async def remove_premium(user_id):
+    await collection.delete_one({"user_id": user_id})  # Async removal
 
-# Remove expired premium users
-def remove_expired_users():
-    current_time = datetime.now()  # Current datetime object
-    collection.delete_many({"expiration_timestamp": {"$lte": current_time}})
+# Remove expired users
+async def remove_expired_users():
+    current_time = datetime.now().isoformat()
+    await collection.delete_many({"expiration_timestamp": {"$lte": current_time}})  # Async removal
 
-# Add a premium user with expiration time
-def add_premium(user_id, time_limit_minutes):
+# Add premium user
+async def add_premium(user_id, time_limit_minutes):
     expiration_time = datetime.now() + timedelta(minutes=time_limit_minutes)
     premium_data = {
         "user_id": user_id,
-        "expiration_timestamp": expiration_time,  # Store datetime object directly
+        "expiration_timestamp": expiration_time.isoformat(),
     }
-    collection.update_one(
+    await collection.update_one(
         {"user_id": user_id},
         {"$set": premium_data},
         upsert=True
-    )
+    )  # Async update
 
-
-
-# List premium users with their remaining time, excluding expired ones
+# List active premium users
 async def list_premium_users():
-    # Use asyncio.to_thread to run the blocking code in a separate thread
-    premium_users = await asyncio.to_thread(list, collection.find({}))
+    premium_users = collection.find({})
     premium_user_list = []
 
-    for user in premium_users:
+    async for user in premium_users:
         user_id = user["user_id"]
         expiration_timestamp = user["expiration_timestamp"]
-
-        # Check if expiration_timestamp is a datetime object, convert if needed
-        if isinstance(expiration_timestamp, str):
-            expiration_time = datetime.fromisoformat(expiration_timestamp)
-        else:
-            expiration_time = expiration_timestamp  # Already a datetime object
-
-        # Calculate remaining time
+        expiration_time = datetime.fromisoformat(expiration_timestamp)
         remaining_time = expiration_time - datetime.now()
 
-        if remaining_time.total_seconds() > 0:
+        if remaining_time.total_seconds() > 0:  # Only active users
             days, hours, minutes, seconds = (
                 remaining_time.days,
                 remaining_time.seconds // 3600,
@@ -66,9 +54,5 @@ async def list_premium_users():
             )
             expiry_info = f"{days}d {hours}h {minutes}m {seconds}s left"
             premium_user_list.append(f"UserID: {user_id} - Expiry: {expiry_info}")
-        # Expired users will be excluded, so no action for them
 
-    if not premium_user_list:
-        return "No active premium users found."
-    
     return premium_user_list
