@@ -347,16 +347,16 @@ Unsuccessful: <code>{unsuccessful}</code></b>"""
 @Bot.on_message(filters.private & filters.command('addpaid') & filters.user(ADMINS))
 async def add_premium_user(client: Client, msg: Message):
     if len(msg.command) != 3:
-        await msg.reply_text("usage: /addpremium user_id time_limit_months")
+        await msg.reply_text("usage: /addpremium user_id time_limit_days")
         return
     try:
         user_id = int(msg.command[1])
         time_limit_months = int(msg.command[2])
-        await add_premium(user_id, time_limit_months)
-        await msg.reply_text(f"User {user_id} added as a paid user with {time_limit_months}-days plan.")
+        await add_premium(user_id, time_limit_days)
+        await msg.reply_text(f"User {user_id} added as a paid user with {time_limit_days}-days plan.")
         await client.send_message(
                 chat_id= user_id,
-                text=f"**ᴄᴏɴɢʀᴀᴛᴜʟᴀᴛɪᴏɴs ɴᴏᴡ ʏᴏᴜ ᴀʀᴇ ᴜᴘɢʀᴀᴅᴇᴅ ᴛᴏ {time_limit_months} ᴅᴀʏs sᴜʙsᴄʀɪᴘᴛɪᴏɴ**",
+                text=f"**ᴄᴏɴɢʀᴀᴛᴜʟᴀᴛɪᴏɴs ɴᴏᴡ ʏᴏᴜ ᴀʀᴇ ᴜᴘɢʀᴀᴅᴇᴅ ᴛᴏ {time_limit_days} ᴅᴀʏs sᴜʙsᴄʀɪᴘᴛɪᴏɴ**",
                 parse_mode=ParseMode.MARKDOWN
             )
     except ValueError:
