@@ -371,64 +371,72 @@ async def add_premium_user_command(client, msg):
     except Exception as e:
         await msg.reply_text(f"An error occurred: {str(e)}")
 
-@Bot.on_message(filters.private & filters.command('removepaid') & filters.user(ADMINS))
-async def pre_remove_user(client: Client, msg: Message):
-    if len(msg.command) != 2:
-        await msg.reply_text("useage: /removeuser user_id ")
-        return
-    try:
-        user_id = int(msg.command[1])
-        await remove_premium(user_id)
-        await msg.reply_text(f"User {user_id} has been removed.")
-    except ValueError:
-        await msg.reply_text("user_id must be an integer or not available in database.")
 
 
 # Command to remove premium user
 @Bot.on_message(filters.private & filters.command('removepaid') & filters.user(ADMINS))
 async def pre_remove_user(client: Client, msg: Message):
     if len(msg.command) != 2:
-        await msg.reply_text("usage: /removeuser user_id")
+        await msg.reply_text("Usage: /removepaid <user_id>")
         return
+
     try:
         user_id = int(msg.command[1])
-        # Remove the user from the database
-        await remove_premium(user_id)
-        await msg.reply_text(f"User {user_id} has been removed.")
+
+        # Fetch user info
+        user_info = await collection.find_one({"user_id": user_id})
+        if not user_info:
+            await msg.reply_text(f"User {user_id} is not in the database.")
+            return
+
+        # Check if user is expired
+        current_time = time.time()
+        expiration_time = float(user_info["expiration_timestamp"])
+
+        if expiration_time < current_time:
+            # If expired, remove the user automatically
+            await remove_premium(user_id)
+            await msg.reply_text(f"User {user_id}'s premium had already expired and was automatically removed.")
+        else:
+            # If not expired, remove manually
+            await remove_premium(user_id)
+            await msg.reply_text(f"User {user_id} has been successfully removed from premium.")
     except ValueError:
-        await msg.reply_text("user_id must be an integer or not available in database.")
+        await msg.reply_text("Invalid user ID. Please provide a valid integer.")
+    except Exception as e:
+        await msg.reply_text(f"An error occurred: {str(e)}")
 
 @Bot.on_message(filters.private & filters.command('listpaid') & filters.user(ADMINS))
 async def list_premium_users_command(client, message):
     premium_users = collection.find({})
-    premium_user_list = ['Premium Users in database:']
+    premium_user_list = ['Active Premium Users in database:']
+    current_time = time.time()
 
-    for user in premium_users:
+    async for user in premium_users:
         user_id = user["user_id"]
+        expiration_timestamp = float(user["expiration_timestamp"])
+
+        if expiration_timestamp < current_time:
+            # Remove expired users from the database
+            await collection.delete_one({"user_id": user_id})
+            continue  # Skip to the next user if this one is expired
+
         try:
             user_info = await client.get_users(user_id)
             username = user_info.username if user_info.username else "No Username"
             first_name = user_info.first_name
-            expiration_timestamp = user["expiration_timestamp"]
 
-            # Convert expiration_timestamp to datetime
-            expiration_time = (
-                datetime.fromisoformat(expiration_timestamp)
-                if isinstance(expiration_timestamp, str)
-                else datetime.fromtimestamp(expiration_timestamp)
-            )
+            # Calculate remaining time
+            expiration_time = datetime.fromtimestamp(expiration_timestamp)
             remaining_time = expiration_time - datetime.now()
 
-            if remaining_time.total_seconds() > 0:
-                days, hours, minutes, seconds = (
-                    remaining_time.days,
-                    remaining_time.seconds // 3600,
-                    (remaining_time.seconds // 60) % 60,
-                    remaining_time.seconds % 60,
-                )
-                expiry_info = f"{days}d {hours}h {minutes}m {seconds}s left"
-            else:
-                expiry_info = "Expired"
+            days, hours, minutes, seconds = (
+                remaining_time.days,
+                remaining_time.seconds // 3600,
+                (remaining_time.seconds // 60) % 60,
+                remaining_time.seconds % 60,
+            )
+            expiry_info = f"{days}d {hours}h {minutes}m {seconds}s left"
 
             premium_user_list.append(
                 f"UserID: <code>{user_id}</code>\n"
@@ -442,41 +450,8 @@ async def list_premium_users_command(client, message):
                 f"Error: Unable to fetch user details ({str(e)})"
             )
 
-    if not premium_user_list:
-        await message.reply_text("I found 0 premium users in my DB")
+    if len(premium_user_list) == 1:  # No active users found
+        await message.reply_text("I found 0 active premium users in my DB")
     else:
         await message.reply_text("\n\n".join(premium_user_list), parse_mode=None)
 
-
-# Notify users before premium expires
-async def notify_near_expiry_users(client):
-    """Periodic task to notify users about upcoming premium expiry."""
-    while True:
-        # Fetch users near expiry based on NOTIFICATION_TIME_SECONDS
-        users_to_notify = await get_users_near_expiry(NOTIFICATION_TIME_SECONDS)
-        for user in users_to_notify:
-            try:
-                user_id = user["user_id"]
-                expiration_time = user["expiration_timestamp"]
-                remaining_seconds = expiration_time - int(time.time())
-                remaining_minutes = round(remaining_seconds / 60)
-
-                # Send notification to the user
-                await client.send_message(
-                    chat_id=user_id,
-                    text=(
-                        f"🔔 Your premium subscription is about to expire in {remaining_minutes} minutes.\n\n"
-                        "Please renew your subscription to continue enjoying premium features."
-                    ),
-                )
-            except Exception as e:
-                print(f"Failed to notify user {user['user_id']}: {e}")
-
-        # Wait for the specified interval before checking again
-        await asyncio.sleep(NOTIFICATION_INTERVAL_SECONDS)
-
-# Schedule this task when the bot starts
-async def main():
-    asyncio.create_task(notify_near_expiry_users(client))
-    await client.start()
-    await idle()
