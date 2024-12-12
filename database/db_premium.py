@@ -6,6 +6,15 @@ dbclient = pymongo.MongoClient(DB_URI)
 database = dbclient[DB_NAME]
 collection = database['premium-users']
 
+
+async def is_premium_user(user_id: int) -> bool:
+    """Check if a user has a premium subscription."""
+    user = await collection.find_one({"user_id": user_id})
+    if user:
+        expiration_time = user.get("expiration_timestamp", 0)
+        return time.time() < expiration_time  # True if subscription is active
+    return False
+
 # Remove premium user with specified user_id
 async def remove_premium(user_id):
     # Delete user from the collection by user_id (no need for await)
