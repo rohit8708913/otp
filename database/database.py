@@ -7,6 +7,7 @@ import pymongo, os
 from config import DB_URI, DB_NAME
 from bot import Bot
 from datetime import datetime, timedelta
+from asyncio import sleep
 
 dbclient = pymongo.MongoClient(DB_URI)
 database = dbclient[DB_NAME]
@@ -121,3 +122,39 @@ async def list_premium_users():
         premium_user_list.append(f"UserID: {user_id} - Expiry: {expiry_info}")
 
     return premium_user_list
+
+
+
+async def notify_expiring_users(client):
+    """
+    Notify users whose subscriptions are expiring soon.
+    """
+    while True:
+        # Current time
+        current_time = datetime.now()
+
+        # Calculate the notification threshold time
+        notify_time = current_time + timedelta(seconds=NOTIFICATION_TIME_BEFORE_EXPIRY_SECONDS)
+
+        # Find users whose subscriptions are expiring within the next 60 seconds
+        expiring_users = collection.find({
+            "expiration_timestamp": {"$lte": notify_time.isoformat(), "$gt": current_time.isoformat()}
+        })
+
+        for user in expiring_users:
+            user_id = user["user_id"]
+            expiration_time = datetime.fromisoformat(user["expiration_timestamp"])
+            remaining_time = expiration_time - current_time
+
+            try:
+                # Send notification
+                await client.send_message(
+                    chat_id=user_id,
+                    text=f"⏳ Your premium subscription is expiring in "
+                         f"{remaining_time.seconds} seconds! Renew now to continue enjoying premium benefits.",
+                )
+            except Exception as e:
+                print(f"Failed to notify user {user_id}: {e}")
+
+        # Wait before checking again
+        await sleep(NOTIFICATION_CHECK_INTERVAL_SECONDS)
