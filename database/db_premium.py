@@ -7,12 +7,12 @@ database = dbclient[DB_NAME]
 collection = database['premium-users']
 
 
-async def is_premium_user(user_id: int) -> bool:
-    """Check if a user has a premium subscription."""
-    user = await collection.find_one({"user_id": user_id})
+def is_premium_user(user_id: int) -> bool:
+    """Check if a user has an active premium subscription."""
+    user = collection.find_one({"user_id": user_id})  # Use synchronous find_one
     if user:
         expiration_time = user.get("expiration_timestamp", 0)
-        return time.time() < expiration_time  # True if subscription is active
+        return time.time() < expiration_time
     return False
 
 # Remove premium user with specified user_id
