@@ -12,34 +12,30 @@ collection = database['premium-users']
 
 
 async def add_premium(user_id, time_limit_minutes):
-    try:
-        # Validate and clamp `time_limit_minutes`
-        if time_limit_minutes <= 0:
-            raise ValueError("time_limit_minutes must be greater than 0")
-        
-        # Calculate expiration timestamp
-        expiration_timestamp = int(time.time()) + time_limit_minutes * 60
-        
-        # Verify the computed timestamp is reasonable (e.g., within 1 year from now)
-        current_year = datetime.now().year
-        future_year = datetime.fromtimestamp(expiration_timestamp).year
-        if future_year > current_year + 1:
-            raise ValueError(f"Computed expiration timestamp is too large: {future_year}")
-        
-        # Prepare data for insertion/update
-        premium_data = {
-            "user_id": user_id,
-            "expiration_timestamp": expiration_timestamp,
-        }
-        
-        # Update or insert into the database
-        await collection.update_one(
-            {"user_id": user_id},
-            {"$set": premium_data},
-            upsert=True
-        )
-    except Exception as e:
-        print(f"Error in add_premium: {e}")
+    # Validate the input time limit
+    if time_limit_minutes <= 0:
+        raise ValueError("Time limit must be greater than 0 minutes.")
+    
+    # Calculate expiration timestamp
+    expiration_timestamp = int(time.time()) + time_limit_minutes * 60
+
+    # Log expiration for debugging (optional)
+    print(f"Adding user {user_id} with expiration timestamp {expiration_timestamp} "
+          f"({datetime.fromtimestamp(expiration_timestamp)})")
+
+    # Prepare data
+    premium_data = {
+        "user_id": user_id,
+        "expiration_timestamp": expiration_timestamp,
+    }
+
+    # Insert or update the record in the database
+    await collection.update_one(
+        {"user_id": user_id},
+        {"$set": premium_data},
+        upsert=True
+    )
+
 async def remove_expired_users():
     current_timestamp = int(time.time())
 
