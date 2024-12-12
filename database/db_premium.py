@@ -1,34 +1,33 @@
 import pymongo
-import time
 from datetime import datetime, timedelta
 from config import DB_URI, DB_NAME
+import time 
 
 dbclient = pymongo.MongoClient(DB_URI)
 database = dbclient[DB_NAME]
 collection = database['premium-users']
 
 
-async def is_premium_user(user_id):
+# Check if a user is a premium user
+def is_premium_user(user_id):
     user = collection.find_one({"user_id": user_id})
     return user is not None
 
-# Remove premium user with specified user_id
-async def remove_premium(user_id):
-    # Delete user from the collection by user_id (no need for await)
+# Remove premium user by user_id
+def remove_premium(user_id):
     collection.delete_one({"user_id": user_id})
 
-# Remove expired users
-async def remove_expired_users():
-    current_time = datetime.now().isoformat()  # Get current time in ISO 8601 format
-    # Delete all expired users based on the expiration_timestamp field (no need for await)
+# Remove expired premium users
+def remove_expired_users():
+    current_time = datetime.now()  # Current datetime object
     collection.delete_many({"expiration_timestamp": {"$lte": current_time}})
 
-# Add premium user
-async def add_premium(user_id, time_limit_minutes):
+# Add a premium user with expiration time
+def add_premium(user_id, time_limit_minutes):
     expiration_time = datetime.now() + timedelta(minutes=time_limit_minutes)
     premium_data = {
         "user_id": user_id,
-        "expiration_timestamp": expiration_time.isoformat(),  # Convert to ISO format
+        "expiration_timestamp": expiration_time,  # Store datetime object directly
     }
     collection.update_one(
         {"user_id": user_id},
@@ -36,37 +35,36 @@ async def add_premium(user_id, time_limit_minutes):
         upsert=True
     )
 
-# List premium users
-async def list_premium_users():
+# List premium users with their remaining time, excluding expired ones
+def list_premium_users():
     premium_users = collection.find({})
     premium_user_list = []
 
-    async for user in premium_users:
+    for user in premium_users:
         user_id = user["user_id"]
         expiration_timestamp = user["expiration_timestamp"]
 
-        # Convert expiration_timestamp to datetime
-        try:
-            expiration_time = (
-                datetime.fromisoformat(expiration_timestamp)
-                if isinstance(expiration_timestamp, str)
-                else datetime.fromtimestamp(expiration_timestamp)
+        # Check if expiration_timestamp is a datetime object, convert if needed
+        if isinstance(expiration_timestamp, str):
+            expiration_time = datetime.fromisoformat(expiration_timestamp)
+        else:
+            expiration_time = expiration_timestamp  # Already a datetime object
+
+        # Calculate remaining time
+        remaining_time = expiration_time - datetime.now()
+
+        if remaining_time.total_seconds() > 0:
+            days, hours, minutes, seconds = (
+                remaining_time.days,
+                remaining_time.seconds // 3600,
+                (remaining_time.seconds // 60) % 60,
+                remaining_time.seconds % 60,
             )
-            remaining_time = expiration_time - datetime.now()
+            expiry_info = f"{days}d {hours}h {minutes}m {seconds}s left"
+            premium_user_list.append(f"UserID: {user_id} - Expiry: {expiry_info}")
+        # Expired users will be excluded, so no action for them
 
-            if remaining_time.total_seconds() > 0:
-                days, hours, minutes, seconds = (
-                    remaining_time.days,
-                    remaining_time.seconds // 3600,
-                    (remaining_time.seconds // 60) % 60,
-                    remaining_time.seconds % 60,
-                )
-                expiry_info = f"{days}d {hours}h {minutes}m {seconds}s left"
-            else:
-                expiry_info = "Expired"
-        except Exception as e:
-            expiry_info = f"Error: {e}"
-
-        premium_user_list.append(f"UserID: {user_id} - Expiry: {expiry_info}")
-
+    if not premium_user_list:
+        return "No active premium users found."
+    
     return premium_user_list
