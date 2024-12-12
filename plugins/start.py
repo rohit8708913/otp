@@ -412,24 +412,39 @@ async def list_premium_users_command(client, message):
     for user in premium_users:
         user_id = user["user_id"]
         try:
-            user_info = await client.get_users(user_id)  # This remains asynchronous
+            # Fetch user details asynchronously
+            user_info = await client.get_users(user_id)
             username = user_info.username if user_info.username else "No Username"
             first_name = user_info.first_name
             expiration_timestamp = user["expiration_timestamp"]
-            remaining_days = round((expiration_timestamp - int(time.time())) / (24 * 60 * 60))
-
+            
+            # Calculate remaining time
+            remaining_seconds = expiration_timestamp - int(time.time())
+            
+            if remaining_seconds > 0:
+                remaining_days = remaining_seconds // (24 * 60 * 60)  # days
+                remaining_hours = (remaining_seconds % (24 * 60 * 60)) // 3600  # hours
+                remaining_minutes = (remaining_seconds % 3600) // 60  # minutes
+                remaining_seconds = remaining_seconds % 60  # seconds
+                expiry_info = f"{remaining_days}d {remaining_hours}h {remaining_minutes}m {remaining_seconds}s left"
+            else:
+                expiry_info = "Expired"
+            
+            # Add user info to the list
             premium_user_list.append(
                 f"UserID: <code>{user_id}</code>\n"
                 f"User: @{username}\n"
                 f"Name: <code>{first_name}</code>\n"
-                f"Expiry: {remaining_days} days remaining"
+                f"Expiry: {expiry_info}"
             )
         except Exception as e:
+            # Error handling for user fetching
             premium_user_list.append(
                 f"UserID: <code>{user_id}</code>\n"
                 f"Error: Unable to fetch user details ({str(e)})"
             )
 
+    # Send the message with all the premium user info
     if not premium_user_list:
         await message.reply_text("I found 0 premium users in my DB")
     else:
