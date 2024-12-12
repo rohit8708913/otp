@@ -13,8 +13,8 @@ from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, 
 from pyrogram.errors import FloodWait, UserIsBlocked, InputUserDeactivated
 
 from bot import Bot
-from config import ADMINS, FORCE_MSG, START_MSG, CUSTOM_CAPTION, DISABLE_CHANNEL_BUTTON, PROTECT_CONTENT, TUT_VID, IS_VERIFY, VERIFY_EXPIRE, SHORTLINK_API, SHORTLINK_URL, PREMIUM_BUTTON, PREMIUM_BUTTON2, TIME
-from helper_func import subscribed, encode, decode, get_messages, get_shortlink, get_verify_status, update_verify_status, get_exp_time
+from config import *
+from helper_func import *
 from database.database import *
 from database.db_premium import *
 from config import *
@@ -454,22 +454,36 @@ async def list_premium_users_command(client, message):
     else:
         await message.reply_text("I found 0 premium users in my database.")
 
+
 # Notify users before premium expires
-async def notify_expiring_users(bot: Client):
+async def notify_near_expiry_users(client):
+    """Periodic task to notify users about upcoming premium expiry."""
     while True:
-        current_time = int(time.time())
-        one_min_later = current_time + 60  # 1 min in seconds
-        expiring_users = collection.find({"expiration_timestamp": {"$lte": one_min_later, "$gt": current_time}})
-        
-        for user in expiring_users:
+        # Fetch users near expiry based on NOTIFICATION_TIME_SECONDS
+        users_to_notify = await get_users_near_expiry(NOTIFICATION_TIME_SECONDS)
+        for user in users_to_notify:
             try:
-                await bot.send_message(
-                    chat_id=user["user_id"],
-                    text="⚠️ Your premium subscription will expire in less than 1 min! Please renew your plan to avoid interruption.",
-                    parse_mode=ParseMode.MARKDOWN,
+                user_id = user["user_id"]
+                expiration_time = user["expiration_timestamp"]
+                remaining_seconds = expiration_time - int(time.time())
+                remaining_minutes = round(remaining_seconds / 60)
+
+                # Send notification to the user
+                await client.send_message(
+                    chat_id=user_id,
+                    text=(
+                        f"🔔 Your premium subscription is about to expire in {remaining_minutes} minutes.\n\n"
+                        "Please renew your subscription to continue enjoying premium features."
+                    ),
                 )
             except Exception as e:
-                print(f"Error notifying user {user['user_id']}: {e}")
-        
-        await asyncio.sleep(60)  # Check every 1 minutes to avoid missing users
+                print(f"Failed to notify user {user['user_id']}: {e}")
 
+        # Wait for the specified interval before checking again
+        await asyncio.sleep(NOTIFICATION_INTERVAL_SECONDS)
+
+# Schedule this task when the bot starts
+async def main():
+    asyncio.create_task(notify_near_expiry_users(client))
+    await client.start()
+    await idle()
