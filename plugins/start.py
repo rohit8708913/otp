@@ -408,25 +408,16 @@ async def pre_remove_user(client: Client, msg: Message):
 
 @Bot.on_message(filters.private & filters.command('listpaid') & filters.user(ADMINS))
 async def list_premium_users_command(client, message):
-    premium_users = collection.find({})
+    premium_users_cursor = collection.find({})
     premium_user_list = ['Active Premium Users in database:']
-    current_time = datetime.now()
+    current_time = time.time()
 
-    # Use a normal for loop instead of async for
-    for user in premium_users:
+    # Use async for to iterate over the async cursor
+    async for user in premium_users_cursor:
         user_id = user["user_id"]
-        expiration_timestamp = user["expiration_timestamp"]
+        expiration_timestamp = float(user["expiration_timestamp"])
 
-        # Convert expiration timestamp from string (ISO 8601) to datetime
-        try:
-            expiration_time = datetime.fromisoformat(expiration_timestamp)
-        except ValueError:
-            premium_user_list.append(
-                f"UserID: <code>{user_id}</code>\nError: Invalid expiration timestamp format"
-            )
-            continue
-
-        if expiration_time < current_time:
+        if expiration_timestamp < current_time:
             # Remove expired users from the database
             await collection.delete_one({"user_id": user_id})
             continue  # Skip to the next user if this one is expired
@@ -437,7 +428,8 @@ async def list_premium_users_command(client, message):
             first_name = user_info.first_name
 
             # Calculate remaining time
-            remaining_time = expiration_time - current_time
+            expiration_time = datetime.fromtimestamp(expiration_timestamp)
+            remaining_time = expiration_time - datetime.now()
 
             days, hours, minutes, seconds = (
                 remaining_time.days,
