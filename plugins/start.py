@@ -346,21 +346,48 @@ Unsuccessful: <code>{unsuccessful}</code></b>"""
 
 @Bot.on_message(filters.private & filters.command('addpaid') & filters.user(ADMINS))
 async def add_premium_user(client: Client, msg: Message):
-    if len(msg.command) != 3:
-        await msg.reply_text("usage: /addpremium user_id time_limit_days")
+    if len(msg.command) < 4:
+        await msg.reply_text("Usage: /addpaid user_id time_limit value unit (e.g., /addpaid 123456 5 days)")
         return
     try:
         user_id = int(msg.command[1])
-        time_limit_months = int(msg.command[2])
-        await add_premium(user_id, time_limit_days)
-        await msg.reply_text(f"User {user_id} added as a paid user with {time_limit_days}-days plan.")
+        time_limit_value = int(msg.command[2])
+        time_unit = msg.command[3].lower()  # Accept days, hours, minutes, or seconds
+
+        # Convert time limit to seconds based on the unit
+        if time_unit == "days":
+            time_limit_seconds = time_limit_value * 24 * 60 * 60
+        elif time_unit == "hours":
+            time_limit_seconds = time_limit_value * 60 * 60
+        elif time_unit == "minutes":
+            time_limit_seconds = time_limit_value * 60
+        elif time_unit == "seconds":
+            time_limit_seconds = time_limit_value
+        else:
+            await msg.reply_text("Invalid time unit. Use days, hours, minutes, or seconds.")
+            return
+
+        # Calculate expiration timestamp
+        expiration_timestamp = int(time.time()) + time_limit_seconds
+
+        # Save user to the premium database
+        await add_premium(user_id, expiration_timestamp)
+
+        # Reply to the admin
+        await msg.reply_text(
+            f"User {user_id} added as a paid user with {time_limit_value} {time_unit} subscription."
+        )
+
+        # Notify the user
         await client.send_message(
-                chat_id= user_id,
-                text=f"**ᴄᴏɴɢʀᴀᴛᴜʟᴀᴛɪᴏɴs ɴᴏᴡ ʏᴏᴜ ᴀʀᴇ ᴜᴘɢʀᴀᴅᴇᴅ ᴛᴏ {time_limit_days} ᴅᴀʏs sᴜʙsᴄʀɪᴘᴛɪᴏɴ**",
-                parse_mode=ParseMode.MARKDOWN
-            )
+            chat_id=user_id,
+            text=f"**🎉 Congratulations! You have been upgraded to a {time_limit_value} {time_unit} premium subscription.**",
+            parse_mode=ParseMode.MARKDOWN,
+        )
     except ValueError:
-        await msg.reply_text("Invalid user_id or time_limit. Please recheck.")
+        await msg.reply_text("Invalid user_id or time limit. Please recheck.")
+    except Exception as e:
+        await msg.reply_text(f"An error occurred: {e}")
 
 @Bot.on_message(filters.private & filters.command('removepaid') & filters.user(ADMINS))
 async def pre_remove_user(client: Client, msg: Message):
