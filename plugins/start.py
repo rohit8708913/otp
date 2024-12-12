@@ -405,28 +405,54 @@ from pyrogram.errors.exceptions.bad_request_400 import PeerIdInvalid
 @Bot.on_message(filters.private & filters.command('listpaid') & filters.user(ADMINS))
 async def list_premium_users_command(client, message):
     premium_users = collection.find({})
-    premium_user_list = ['Premium Users in database:']
+    premium_user_list = ["**Premium Users in Database:**\n"]
 
-    for user in premium_users:
-        user_ids = user["user_id"]
+    async for user in premium_users:
+        user_id = user.get("user_id")
+        expiration_timestamp = user.get("expiration_timestamp")
         try:
-            user_info = await client.get_users(user_ids)
-            username = user_info.username
-            first_name = user_info.first_name
-            expiration_timestamp = user["expiration_timestamp"]
-            xt = (expiration_timestamp - time.time())
-            x = round(xt / (24 * 60 * 60))
-            premium_user_list.append(f"UserID- <code>{user_ids}</code>\nUser- @{username}\nName- <code>{first_name}</code>\nExpiry- {x} days")
-        except PeerIdInvalid:
-            premium_user_list.append(f"UserID- <code>{user_ids}</code>\nUser- <code>Invalid ID</code>\nName- <code>Unknown</code>\nExpiry- <code>N/A</code>")
-        except Exception as e:
-            premium_user_list.append(f"UserID- <code>{user_ids}</code>\nUser- <code>Error: {str(e)}</code>\nName- <code>Unknown</code>\nExpiry- <code>N/A</code>")
+            # Fetch user information
+            user_info = await client.get_users(user_id)
+            username = f"@{user_info.username}" if user_info.username else "No Username"
+            first_name = user_info.first_name or "No First Name"
 
-    if premium_user_list:
-        formatted_list = [f"{user}" for user in premium_user_list]
-        await message.reply_text("\n\n".join(formatted_list))
+            # Calculate remaining time
+            remaining_seconds = expiration_timestamp - time.time()
+            if remaining_seconds > 0:
+                remaining_days = round(remaining_seconds / (24 * 60 * 60))
+                expiry_info = f"{remaining_days} days"
+            else:
+                expiry_info = "Expired"
+
+            # Format user information
+            premium_user_list.append(
+                f"**User ID:** `<code>{user_id}</code>`\n"
+                f"**Username:** {username}\n"
+                f"**Name:** `<code>{first_name}</code>`\n"
+                f"**Expiry:** {expiry_info}\n"
+            )
+        except PeerIdInvalid:
+            # Handle invalid user IDs
+            premium_user_list.append(
+                f"**User ID:** `<code>{user_id}</code>`\n"
+                f"**Username:** `Invalid ID`\n"
+                f"**Name:** `Unknown`\n"
+                f"**Expiry:** `N/A`\n"
+            )
+        except Exception as e:
+            # Handle other errors
+            premium_user_list.append(
+                f"**User ID:** `<code>{user_id}</code>`\n"
+                f"**Username:** `Error: {str(e)}`\n"
+                f"**Name:** `Unknown`\n"
+                f"**Expiry:** `N/A`\n"
+            )
+
+    # Send formatted list or fallback message
+    if len(premium_user_list) > 1:
+        await message.reply_text("\n".join(premium_user_list), parse_mode=ParseMode.MARKDOWN)
     else:
-        await message.reply_text("I found 0 premium users in my DB")
+        await message.reply_text("I found 0 premium users in my database.")
 
 # Notify users before premium expires
 async def notify_expiring_users(bot: Client):
