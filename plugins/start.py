@@ -406,6 +406,7 @@ async def pre_remove_user(client: Client, msg: Message):
     except Exception as e:
         await msg.reply_text(f"An error occurred: {str(e)}")
 
+
 @Bot.on_message(filters.private & filters.command('listpaid') & filters.user(ADMINS))
 async def list_premium_users_command(client, message):
     premium_users_cursor = collection.find({})
@@ -415,20 +416,26 @@ async def list_premium_users_command(client, message):
     # Use async for to iterate over the async cursor
     async for user in premium_users_cursor:
         user_id = user["user_id"]
-        expiration_timestamp = float(user["expiration_timestamp"])
-
-        if expiration_timestamp < current_time:
-            # Remove expired users from the database
-            await collection.delete_one({"user_id": user_id})
-            continue  # Skip to the next user if this one is expired
+        expiration_timestamp = user["expiration_timestamp"]
 
         try:
+            # Convert expiration_timestamp to a datetime object
+            expiration_time = datetime.fromisoformat(expiration_timestamp)
+
+            # Convert expiration_time to timestamp for comparison
+            expiration_timestamp_unix = expiration_time.timestamp()
+
+            if expiration_timestamp_unix < current_time:
+                # Remove expired users from the database
+                await collection.delete_one({"user_id": user_id})
+                continue  # Skip to the next user if this one is expired
+
+            # If not expired, retrieve user info
             user_info = await client.get_users(user_id)
             username = user_info.username if user_info.username else "No Username"
             first_name = user_info.first_name
 
             # Calculate remaining time
-            expiration_time = datetime.fromtimestamp(expiration_timestamp)
             remaining_time = expiration_time - datetime.now()
 
             days, hours, minutes, seconds = (
