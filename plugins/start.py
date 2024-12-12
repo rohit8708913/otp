@@ -366,7 +366,7 @@ async def add_premium_user_command(client, msg):
         )
         await client.send_message(
             chat_id=user_id,
-            text=f"🎉 Congratulations! You have been upgraded to premium for {time_limit_minutes} minutes.",
+            text=f"🎉 Congratulations! You have been upgraded to premium for {time_limit_days} days.",
         )
     except ValueError:
         await msg.reply_text("Invalid user_id or time_limit_minutes. Please recheck.")
