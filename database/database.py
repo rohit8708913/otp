@@ -64,7 +64,6 @@ async def del_user(user_id: int):
     return
 
 
-
 # Add premium user with specified months
 async def add_premium(user_id, time_limit_months):
     expiration_timestamp = int(time.time()) + time_limit_months * 30 * 24 * 60 * 60
@@ -98,9 +97,15 @@ async def list_premium_users():
 
         # Calculate remaining time
         remaining_seconds = expiration_timestamp - time.time()
+
         if remaining_seconds > 0:
-            remaining_days = round(remaining_seconds / (24 * 60 * 60))
-            expiry_info = f"{remaining_days} days left"
+            remaining_days = int(remaining_seconds // (24 * 60 * 60))  # days
+            remaining_hours = int((remaining_seconds % (24 * 60 * 60)) // 3600)  # hours
+            remaining_minutes = int((remaining_seconds % 3600) // 60)  # minutes
+            remaining_seconds = int(remaining_seconds % 60)  # seconds
+
+            # Format remaining time
+            expiry_info = f"{remaining_days}d {remaining_hours}h {remaining_minutes}m {remaining_seconds}s left"
         else:
             expiry_info = "Expired"
 
