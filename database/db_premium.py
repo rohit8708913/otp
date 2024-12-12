@@ -1,31 +1,21 @@
-
-
-
-import time
-import pymongo, os
-from config import DB_URI, DB_NAME
+import pymongo
 from datetime import datetime, timedelta
+from config import DB_URI, DB_NAME
 
 dbclient = pymongo.MongoClient(DB_URI)
 database = dbclient[DB_NAME]
 collection = database['premium-users']
 
-
-
 # Remove premium user with specified user_id
 async def remove_premium(user_id):
-    # Delete user from the collection by user_id
-    await collection.delete_one({"user_id": user_id})
-
-
+    # Delete user from the collection by user_id (no need for await)
+    collection.delete_one({"user_id": user_id})
 
 # Remove expired users
 async def remove_expired_users():
     current_time = datetime.now().isoformat()  # Get current time in ISO 8601 format
-    # Delete all expired users based on the expiration_timestamp field
-    await collection.delete_many({"expiration_timestamp": {"$lte": current_time}})
-
-
+    # Delete all expired users based on the expiration_timestamp field (no need for await)
+    collection.delete_many({"expiration_timestamp": {"$lte": current_time}})
 
 # Add premium user
 async def add_premium(user_id, time_limit_minutes):
@@ -34,7 +24,7 @@ async def add_premium(user_id, time_limit_minutes):
         "user_id": user_id,
         "expiration_timestamp": expiration_time.isoformat(),  # Convert to ISO format
     }
-    await collection.update_one(
+    collection.update_one(
         {"user_id": user_id},
         {"$set": premium_data},
         upsert=True
