@@ -18,6 +18,9 @@ from helper_func import *
 from database.database import *
 from database.db_premium import *
 from config import *
+from pyrogram.errors.exceptions.bad_request_400 import PeerIdInvalid
+from datetime import datetime, timedelta
+
 
 SECONDS = TIME 
 
@@ -401,7 +404,8 @@ async def pre_remove_user(client: Client, msg: Message):
     except ValueError:
         await msg.reply_text("user_id must be an integer or not available in database.")
 
-from pyrogram.errors.exceptions.bad_request_400 import PeerIdInvalid
+
+
 @Bot.on_message(filters.private & filters.command('listpaid') & filters.user(ADMINS))
 async def list_premium_users_command(client, message):
     # Fetch all premium users
@@ -418,18 +422,19 @@ async def list_premium_users_command(client, message):
             first_name = user_info.first_name
             expiration_timestamp = user["expiration_timestamp"]
 
-            # Correctly calculate the remaining time
-            current_timestamp = int(time.time())  # Current time in Unix timestamp
-            remaining_seconds = expiration_timestamp - current_timestamp
+            # Calculate the time difference using datetime
+            current_time = datetime.now()
+            expiration_time = datetime.fromtimestamp(expiration_timestamp)
+            remaining_time = expiration_time - current_time
 
-            if remaining_seconds > 0:
-                # Convert seconds to days, hours, minutes, seconds
-                remaining_days = remaining_seconds // (24 * 60 * 60)
-                remaining_hours = (remaining_seconds % (24 * 60 * 60)) // 3600
-                remaining_minutes = (remaining_seconds % 3600) // 60
-                remaining_seconds = remaining_seconds % 60
-
-                expiry_info = f"{remaining_days}d {remaining_hours}h {remaining_minutes}m {remaining_seconds}s left"
+            if remaining_time.total_seconds() > 0:
+                # Convert remaining time into days, hours, minutes, and seconds
+                days = remaining_time.days
+                seconds = remaining_time.seconds
+                hours = seconds // 3600
+                minutes = (seconds % 3600) // 60
+                seconds = seconds % 60
+                expiry_info = f"{days}d {hours}h {minutes}m {seconds}s left"
             else:
                 expiry_info = "Expired"
 
