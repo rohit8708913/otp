@@ -385,7 +385,7 @@ async def pre_remove_user(client: Client, msg: Message):
 
 @Bot.on_message(filters.private & filters.command('listpaid') & filters.user(ADMINS))
 async def list_premium_users_command(client, message):
-    premium_users = collection.find({})  # Fetch users
+    premium_users = collection.find({})
     premium_user_list = ['Premium Users in database:']
 
     for user in premium_users:
@@ -394,7 +394,14 @@ async def list_premium_users_command(client, message):
             user_info = await client.get_users(user_id)
             username = user_info.username if user_info.username else "No Username"
             first_name = user_info.first_name
-            expiration_time = datetime.fromisoformat(user["expiration_timestamp"])
+            expiration_timestamp = user["expiration_timestamp"]
+
+            # Convert expiration_timestamp to datetime
+            expiration_time = (
+                datetime.fromisoformat(expiration_timestamp)
+                if isinstance(expiration_timestamp, str)
+                else datetime.fromtimestamp(expiration_timestamp)
+            )
             remaining_time = expiration_time - datetime.now()
 
             if remaining_time.total_seconds() > 0:
@@ -423,7 +430,7 @@ async def list_premium_users_command(client, message):
     if not premium_user_list:
         await message.reply_text("I found 0 premium users in my DB")
     else:
-        await message.reply_text("\n\n".join(premium_user_list), parse_mode=None)
+        await message.reply_text("\n\n".join(premium_user_list), parse_mode="HTML")
 
 
 # Notify users before premium expires
