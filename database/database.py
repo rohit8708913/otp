@@ -108,3 +108,13 @@ async def list_premium_users():
 
     return premium_user_list
 
+
+async def get_users_near_expiry(seconds):
+    """Fetch users whose subscriptions will expire within the next `seconds`."""
+    current_timestamp = int(time.time())
+    near_expiry_timestamp = current_timestamp + seconds
+
+    # Find users near expiry
+    return await collection.find(
+        {"expiration_timestamp": {"$lte": near_expiry_timestamp, "$gt": current_timestamp}}
+    ).to_list(length=None)
