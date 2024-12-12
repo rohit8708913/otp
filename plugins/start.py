@@ -19,7 +19,7 @@ from database.database import *
 from database.db_premium import *
 from config import *
 from pyrogram.errors.exceptions.bad_request_400 import PeerIdInvalid
-from datetime import datetime, timedelta
+from datetime import datetime
 
 
 SECONDS = TIME 
@@ -347,18 +347,21 @@ Unsuccessful: <code>{unsuccessful}</code></b>"""
         await asyncio.sleep(8)
         await msg.delete()
 
+
+
+# Command to add premium user
 @Bot.on_message(filters.private & filters.command('addpaid') & filters.user(ADMINS))
 async def add_premium_user_command(client, msg):
     if len(msg.command) != 3:
         await msg.reply_text("Usage: /addpaid <user_id> <time_limit_minutes>")
         return
-    
+
     try:
         user_id = int(msg.command[1])
         time_limit_minutes = int(msg.command[2])
-        
+
         await add_premium(user_id, time_limit_minutes)
-        
+
         await msg.reply_text(
             f"User {user_id} added as a premium user for {time_limit_minutes} minutes."
         )
@@ -370,7 +373,6 @@ async def add_premium_user_command(client, msg):
         await msg.reply_text("Invalid user_id or time_limit_minutes. Please recheck.")
     except Exception as e:
         await msg.reply_text(f"An error occurred: {str(e)}")
-
 
 
 # Command to remove premium user
@@ -407,6 +409,7 @@ async def pre_remove_user(client: Client, msg: Message):
         await msg.reply_text(f"An error occurred: {str(e)}")
 
 
+# Command to list active premium users
 @Bot.on_message(filters.private & filters.command('listpaid') & filters.user(ADMINS))
 async def list_premium_users_command(client, message):
     premium_users_cursor = collection.find({})
