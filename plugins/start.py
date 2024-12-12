@@ -433,7 +433,7 @@ async def list_premium_users_command(client, message):
     if not premium_user_list:
         await message.reply_text("I found 0 premium users in my DB")
     else:
-        await message.reply_text("\n\n".join(premium_user_list), parse_mode="html")
+        await message.reply_text("\n\n".join(premium_user_list), parse_mode="markdown")
 
 
 # Notify users before premium expires
