@@ -10,8 +10,8 @@ collection = database['premium-users']
 
 
 # Check if a user is a premium user
-def is_premium_user(user_id):
-    user = collection.find_one({"user_id": user_id})
+async def is_premium_user(user_id):
+    user = await collection.find_one({"user_id": user_id})  # Ensure this is asynchronous
     return user is not None
 
 # Remove premium user by user_id
