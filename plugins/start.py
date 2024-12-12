@@ -404,19 +404,15 @@ async def pre_remove_user(client: Client, msg: Message):
 from pyrogram.errors.exceptions.bad_request_400 import PeerIdInvalid
 @Bot.on_message(filters.private & filters.command('listpaid') & filters.user(ADMINS))
 async def list_premium_users_command(client, message):
-    # Fetch all premium users as a list
-    premium_users = await collection.find({}).to_list(length=None)
-
-    if not premium_users:
-        await message.reply_text("I found 0 premium users in my DB")
-        return
+    # Fetch all premium users synchronously
+    premium_users = collection.find({})  # No await here
 
     premium_user_list = ['Premium Users in database:']
 
     for user in premium_users:
         user_id = user["user_id"]
         try:
-            user_info = await client.get_users(user_id)
+            user_info = await client.get_users(user_id)  # This remains asynchronous
             username = user_info.username if user_info.username else "No Username"
             first_name = user_info.first_name
             expiration_timestamp = user["expiration_timestamp"]
@@ -434,8 +430,10 @@ async def list_premium_users_command(client, message):
                 f"Error: Unable to fetch user details ({str(e)})"
             )
 
-    # Send the list to the admin
-    await message.reply_text("\n\n".join(premium_user_list), parse_mode="HTML")
+    if not premium_user_list:
+        await message.reply_text("I found 0 premium users in my DB")
+    else:
+        await message.reply_text("\n\n".join(premium_user_list), parse_mode="HTML")
 
 
 # Notify users before premium expires
