@@ -102,3 +102,23 @@ async def list_premium_users():
         premium_user_list.append(f"{user_id} - {username} - Expiration Timestamp: {expiration_timestamp}")
 
     return premium_user_list
+
+
+# Notify users before premium expires
+async def notify_expiring_users(bot: Client):
+    while True:
+        current_time = int(time.time())
+        one_hour_later = current_time + 3600  # 1 hour in seconds
+        expiring_users = collection.find({"expiration_timestamp": {"$lte": one_hour_later, "$gt": current_time}})
+        
+        for user in expiring_users:
+            try:
+                await bot.send_message(
+                    chat_id=user["user_id"],
+                    text="⚠️ Your premium subscription will expire in less than 1 hour! Please renew your plan to avoid interruption.",
+                    parse_mode=ParseMode.MARKDOWN,
+                )
+            except Exception as e:
+                print(f"Error notifying user {user['user_id']}: {e}")
+        
+        await asyncio.sleep(600)  # Check every 10 minutes to avoid missing users
