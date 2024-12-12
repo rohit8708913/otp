@@ -64,76 +64,45 @@ async def del_user(user_id: int):
     return
 
 
-# Add premium user with specified months
+
+# Add premium user
 async def add_premium(user_id, time_limit_minutes):
-    # Validate the input time limit
-    if time_limit_minutes <= 0:
-        raise ValueError("Time limit must be greater than 0 minutes.")
-    
-    # Calculate expiration timestamp
-    expiration_timestamp = int(time.time()) + time_limit_minutes * 60
-
-    # Log expiration for debugging (optional)
-    print(f"Adding user {user_id} with expiration timestamp {expiration_timestamp} "
-          f"({datetime.fromtimestamp(expiration_timestamp)})")
-
-    # Prepare data
+    expiration_time = datetime.now() + timedelta(minutes=time_limit_minutes)
     premium_data = {
         "user_id": user_id,
-        "expiration_timestamp": expiration_timestamp,
+        "expiration_timestamp": expiration_time.isoformat(),  # Use ISO format
     }
-
-    # Insert or update the record in the database
     await collection.update_one(
         {"user_id": user_id},
         {"$set": premium_data},
         upsert=True
     )
 
-# Remove premium user by user_id
-async def remove_premium(user_id):
-    await collection.delete_one({"user_id": user_id})
-
-# Remove all expired users from the database
+# Remove expired users
 async def remove_expired_users():
-    current_timestamp = int(time.time())
-    await collection.delete_many({"expiration_timestamp": {"$lte": current_timestamp}})
+    current_time = datetime.now().isoformat()
+    await collection.delete_many({"expiration_timestamp": {"$lte": current_time}})
 
-
-# List all premium users in the database
+# List premium users
 async def list_premium_users():
     premium_users = collection.find({})
     premium_user_list = []
 
     async for user in premium_users:
         user_id = user["user_id"]
-        expiration_timestamp = user["expiration_timestamp"]
+        expiration_time = datetime.fromisoformat(user["expiration_timestamp"])
+        remaining_time = expiration_time - datetime.now()
 
-        # Calculate remaining time in seconds
-        remaining_seconds = expiration_timestamp - time.time()
-
-        if remaining_seconds > 0:
-            remaining_days = int(remaining_seconds // (24 * 60 * 60))  # days
-            remaining_hours = int((remaining_seconds % (24 * 60 * 60)) // 3600)  # hours
-            remaining_minutes = int((remaining_seconds % 3600) // 60)  # minutes
-            remaining_seconds = int(remaining_seconds % 60)  # seconds
-
-            # Format remaining time in readable format
-            expiry_info = f"{remaining_days}d {remaining_hours}h {remaining_minutes}m {remaining_seconds}s left"
+        if remaining_time.total_seconds() > 0:
+            days, hours, minutes, seconds = (
+                remaining_time.days,
+                remaining_time.seconds // 3600,
+                (remaining_time.seconds // 60) % 60,
+                remaining_time.seconds % 60,
+            )
+            expiry_info = f"{days}d {hours}h {minutes}m {seconds}s left"
         else:
             expiry_info = "Expired"
 
         premium_user_list.append(f"UserID: {user_id} - Expiry: {expiry_info}")
-
     return premium_user_list
-
-
-async def get_users_near_expiry(seconds):
-    """Fetch users whose subscriptions will expire within the next `seconds`."""
-    current_timestamp = int(time.time())
-    near_expiry_timestamp = current_timestamp + seconds
-
-    # Find users near expiry
-    return await collection.find(
-        {"expiration_timestamp": {"$lte": near_expiry_timestamp, "$gt": current_timestamp}}
-    ).to_list(length=None)
