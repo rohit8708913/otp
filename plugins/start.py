@@ -490,15 +490,17 @@ async def notify_premium_expiry():
             expiration_time = datetime.fromisoformat(expiration_timestamp)
             expiration_timestamp_unix = expiration_time.timestamp()
 
+            # Debugging: print expiration time, current time, and the time difference
+            print(f"User {user_id} - Expiration: {expiration_timestamp_unix}, Current: {current_time}, Time Remaining: {expiration_timestamp_unix - current_time}")
+
             # If the premium is about to expire, send a reminder
             if expiration_timestamp_unix - current_time <= reminder_window:
                 # Send reminder message
                 await client.send_message(
                     chat_id=user_id,
-                    text=f"⚠️ Your premium status is about to expire in 1 minutes. Please renew to continue enjoying premium features. \n\n"
-                         f"Type /renew to extend your premium subscription."
+                    text=f"⚠️ Your premium status is about to expire in 1 minute. Please renew to continue enjoying premium features. \n\n"
+                         f"To extend your premium subscription. Contact @rohit_1888"
                 )
-                # Optionally, log that the message was sent
                 print(f"Sent reminder to user {user_id} about expiration.")
 
         except Exception as e:
