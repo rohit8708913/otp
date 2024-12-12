@@ -63,8 +63,8 @@ async def del_user(user_id: int):
     user_data.delete_one({'_id': user_id})
     return
 
-async def add_premium(user_id, time_limit_months):
-    expiration_timestamp = int(time.time()) + time_limit_months * 30 * 24 * 60 * 60
+async def add_premium(user_id, time_limit_days):
+    expiration_timestamp = int(time.time()) + time_limit_days * 24 * 60 * 60
     premium_data = {
         "user_id": user_id,
         "expiration_timestamp": expiration_timestamp,
