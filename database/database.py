@@ -86,6 +86,7 @@ async def remove_expired_users():
     current_timestamp = int(time.time())
     await collection.delete_many({"expiration_timestamp": {"$lte": current_timestamp}})
 
+
 # List all premium users in the database
 async def list_premium_users():
     premium_users = collection.find({})
@@ -95,7 +96,7 @@ async def list_premium_users():
         user_id = user["user_id"]
         expiration_timestamp = user["expiration_timestamp"]
 
-        # Calculate remaining time
+        # Calculate remaining time in seconds
         remaining_seconds = expiration_timestamp - time.time()
 
         if remaining_seconds > 0:
@@ -104,7 +105,7 @@ async def list_premium_users():
             remaining_minutes = int((remaining_seconds % 3600) // 60)  # minutes
             remaining_seconds = int(remaining_seconds % 60)  # seconds
 
-            # Format remaining time
+            # Format remaining time in readable format
             expiry_info = f"{remaining_days}d {remaining_hours}h {remaining_minutes}m {remaining_seconds}s left"
         else:
             expiry_info = "Expired"
