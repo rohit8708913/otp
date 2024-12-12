@@ -404,32 +404,35 @@ async def pre_remove_user(client: Client, msg: Message):
 from pyrogram.errors.exceptions.bad_request_400 import PeerIdInvalid
 @Bot.on_message(filters.private & filters.command('listpaid') & filters.user(ADMINS))
 async def list_premium_users_command(client, message):
-    # Fetch all premium users synchronously
-    premium_users = collection.find({})  # No await here
+    # Fetch all premium users
+    premium_users = collection.find({})
 
     premium_user_list = ['Premium Users in database:']
 
     for user in premium_users:
         user_id = user["user_id"]
         try:
-            # Fetch user details asynchronously
+            # Fetch user details
             user_info = await client.get_users(user_id)
             username = user_info.username if user_info.username else "No Username"
             first_name = user_info.first_name
             expiration_timestamp = user["expiration_timestamp"]
-            
-            # Calculate remaining time
-            remaining_seconds = expiration_timestamp - int(time.time())
-            
+
+            # Correctly calculate the remaining time
+            current_timestamp = int(time.time())  # Current time in Unix timestamp
+            remaining_seconds = expiration_timestamp - current_timestamp
+
             if remaining_seconds > 0:
-                remaining_days = remaining_seconds // (24 * 60 * 60)  # days
-                remaining_hours = (remaining_seconds % (24 * 60 * 60)) // 3600  # hours
-                remaining_minutes = (remaining_seconds % 3600) // 60  # minutes
-                remaining_seconds = remaining_seconds % 60  # seconds
+                # Convert seconds to days, hours, minutes, seconds
+                remaining_days = remaining_seconds // (24 * 60 * 60)
+                remaining_hours = (remaining_seconds % (24 * 60 * 60)) // 3600
+                remaining_minutes = (remaining_seconds % 3600) // 60
+                remaining_seconds = remaining_seconds % 60
+
                 expiry_info = f"{remaining_days}d {remaining_hours}h {remaining_minutes}m {remaining_seconds}s left"
             else:
                 expiry_info = "Expired"
-            
+
             # Add user info to the list
             premium_user_list.append(
                 f"UserID: <code>{user_id}</code>\n"
@@ -445,11 +448,10 @@ async def list_premium_users_command(client, message):
             )
 
     # Send the message with all the premium user info
-    if not premium_user_list:
+    if len(premium_user_list) == 1:  # No users in the list
         await message.reply_text("I found 0 premium users in my DB")
     else:
         await message.reply_text("\n\n".join(premium_user_list), parse_mode=None)
-
 
 # Notify users before premium expires
 async def notify_near_expiry_users(client):
