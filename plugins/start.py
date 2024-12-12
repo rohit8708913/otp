@@ -385,27 +385,32 @@ async def pre_remove_user(client: Client, msg: Message):
 
 @Bot.on_message(filters.private & filters.command('listpaid') & filters.user(ADMINS))
 async def list_premium_users_command(client, message):
-    premium_users = collection.find({})  # Fetch all premium users synchronously
+    premium_users = collection.find({})
 
     premium_user_list = ['Premium Users in database:']
 
     for user in premium_users:
         user_id = user["user_id"]
         try:
-            user_info = await client.get_users(user_id)  # Fetch user details asynchronously
+            # Fetch user details
+            user_info = await client.get_users(user_id)
             username = user_info.username if user_info.username else "No Username"
             first_name = user_info.first_name
-            expiration_timestamp = user["expiration_timestamp"]
 
             # Calculate remaining time
-            remaining_seconds = expiration_timestamp - int(time.time())
+            expiration_timestamp = user["expiration_timestamp"]
+            current_time = int(time.time())
+            remaining_seconds = expiration_timestamp - current_time
+
             if remaining_seconds > 0:
+                # Convert seconds into minutes and seconds
                 remaining_minutes = remaining_seconds // 60
                 remaining_seconds %= 60
                 expiry_info = f"{remaining_minutes}m {remaining_seconds}s left"
             else:
                 expiry_info = "Expired"
 
+            # Append to the list
             premium_user_list.append(
                 f"UserID: <code>{user_id}</code>\n"
                 f"User: @{username}\n"
