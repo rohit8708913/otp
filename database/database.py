@@ -65,11 +65,17 @@ async def del_user(user_id: int):
 
 
 
+# Remove premium user with specified user_id
+async def remove_premium(user_id):
+    # Delete user from the collection by user_id
+    await collection.delete_one({"user_id": user_id})
+
 
 
 # Remove expired users
 async def remove_expired_users():
-    current_time = datetime.now().isoformat()
+    current_time = datetime.now().isoformat()  # Get current time in ISO 8601 format
+    # Delete all expired users based on the expiration_timestamp field
     await collection.delete_many({"expiration_timestamp": {"$lte": current_time}})
 
 
