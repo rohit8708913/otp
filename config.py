@@ -24,19 +24,19 @@ CHANNEL_ID = int(os.environ.get("CHANNEL_ID", "-1002008354608"))
 OWNER_ID = int(os.environ.get("OWNER_ID", "7328629001"))
 
 #Port
-PORT = os.environ.get("PORT", "8009")
+PORT = os.environ.get("PORT", "8190")
 
 DB_URI = os.environ.get("DATABASE_URL", "mongodb+srv://nshubh345:1FmseyW0TKaWNMNo@cluster0.pgewb.mongodb.net/?retryWrites=true&w=majority")
 DB_NAME = os.environ.get("DATABASE_NAME", "FilesStoringBot")
 
 #Time in seconds for message delete, put 0 to never delete
-TIME = int(os.environ.get("TIME", "600"))
+TIME = int(os.environ.get("TIME", "0"))
 
-SHORTLINK_URL = os.environ.get("SHORTLINK_URL", "modijiurl.com")
-SHORTLINK_API = os.environ.get("SHORTLINK_API", "beb3b795a226177f3af7c937a2f01d5d7d4f4cf0")
+SHORTLINK_URL = os.environ.get("SHORTLINK_URL", "publicearn.online")
+SHORTLINK_API = os.environ.get("SHORTLINK_API", "adabe1c0675be8ffc5ccbc84a9a65bc5a5d3ec69")
 VERIFY_EXPIRE = int(os.environ.get('VERIFY_EXPIRE', "86400")) # Add time in seconds
 IS_VERIFY = os.environ.get("IS_VERIFY", "True")
-TUT_VID = os.environ.get("TUT_VID", "https://t.me/paymentbot6/5")
+TUT_VID = os.environ.get("TUT_VID", "https://t.me/hwdownload/3")
 
 #force sub channel id, if you want enable force sub
 FORCE_SUB_CHANNEL = int(os.environ.get("FORCE_SUB_CHANNEL", "-1002215102799"))
