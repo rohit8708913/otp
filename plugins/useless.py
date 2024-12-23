@@ -17,3 +17,12 @@ async def stats(bot: Bot, message: Message):
     time = get_readable_time(delta.seconds)
 
     await message.reply(BOT_STATS_TEXT.format(uptime=time))
+
+@Bot.on_message(filters.private & filters.incoming)
+async def useless(_, message: Message):
+    # Check if the user is in the admin list
+    if message.from_user.id in ADMINS:
+        return  # Don't reply if the user is an admin
+
+    if USER_REPLY_TEXT:
+        await message.reply(USER_REPLY_TEXT)
