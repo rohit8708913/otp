@@ -8,29 +8,21 @@ from pyrogram import Client
 from pyrogram.enums import ParseMode
 import sys
 from datetime import datetime, timedelta
+import pytz  # For Indian Standard Time (IST)
 
-from config import (
-    API_HASH,
-    APP_ID,
-    LOGGER,
-    TG_BOT_TOKEN,
-    TG_BOT_WORKERS,
-    FORCE_SUB_CHANNEL,
-    CHANNEL_ID,
-    PORT,
-    FORCE_SUB_CHANNEL2
-)
+from config import *
 from dotenv import load_dotenv
-from database.db_premium import remove_expired_users, collection
+from database.db_premium import remove_expired_users
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-# Load environment variables
 load_dotenv(".env")
 
-# Configuration for notifications
-NOTIFICATION_CHECK_INTERVAL_SECONDS = 30
-NOTIFICATION_TIME_BEFORE_EXPIRY_SECONDS = 60
+def get_indian_time():
+    """Returns the current time in IST."""
+    ist = pytz.timezone("Asia/Kolkata")
+    return datetime.now(ist)
+
 
 
 class Bot(Client):
@@ -39,16 +31,18 @@ class Bot(Client):
             name="Bot",
             api_hash=API_HASH,
             api_id=APP_ID,
-            plugins={"root": "plugins"},
+            plugins={
+                "root": "plugins"
+            },
             workers=TG_BOT_WORKERS,
-            bot_token=TG_BOT_TOKEN,
+            bot_token=TG_BOT_TOKEN
         )
         self.LOGGER = LOGGER
 
     async def start(self):
         await super().start()
         usr_bot_me = await self.get_me()
-        self.uptime = datetime.now()
+        self.uptime = get_indian_time()  # Use IST for uptime tracking
 
         if FORCE_SUB_CHANNEL:
             try:
@@ -56,13 +50,14 @@ class Bot(Client):
                 self.invitelink = link
             except Exception as a:
                 self.LOGGER(__name__).warning(a)
+                self.LOGGER(__name__).warning("Bot can't Export Invite link from Force Sub Channel!")
                 self.LOGGER(__name__).warning(
-                    "Bot can't Export Invite link from Force Sub Channel!"
+                    f"Please Double check the FORCE_SUB_CHANNEL value and Make sure Bot is Admin in channel with "
+                    f"Invite Users via Link Permission, Current Force Sub Channel Value: {FORCE_SUB_CHANNEL}"
                 )
-                self.LOGGER(__name__).info(
-                    "\nBot Stopped. @rohit_1888 for support"
-                )
+                self.LOGGER(__name__).info("\nBot Stopped. @rohit_1888 for support")
                 sys.exit()
+
         if FORCE_SUB_CHANNEL2:
             try:
                 link = (await self.get_chat(FORCE_SUB_CHANNEL2)).invite_link
@@ -72,13 +67,14 @@ class Bot(Client):
                 self.invitelink2 = link
             except Exception as a:
                 self.LOGGER(__name__).warning(a)
+                self.LOGGER(__name__).warning("Bot can't Export Invite link from Force Sub Channel!")
                 self.LOGGER(__name__).warning(
-                    "Bot can't Export Invite link from Force Sub Channel!"
+                    f"Please Double check the FORCE_SUB_CHANNEL2 value and Make sure Bot is Admin in channel with "
+                    f"Invite Users via Link Permission, Current Force Sub Channel Value: {FORCE_SUB_CHANNEL2}"
                 )
-                self.LOGGER(__name__).info(
-                    "\nBot Stopped. @rohit_1888 for support"
-                )
+                self.LOGGER(__name__).info("\nBot Stopped. Dm https://t.me/rohit_1888 for support")
                 sys.exit()
+
         try:
             db_channel = await self.get_chat(CHANNEL_ID)
             self.db_channel = db_channel
@@ -91,10 +87,12 @@ class Bot(Client):
             sys.exit()
 
         self.set_parse_mode(ParseMode.HTML)
+        self.LOGGER(__name__).info(f"Bot Started at {self.uptime.strftime('%Y-%m-%d %H:%M:%S')} IST")
         self.LOGGER(__name__).info(f"Bot Running..! Made by @rohit_1888")
+
         self.username = usr_bot_me.username
 
-        # Web-response
+        # Web response
         app = web.AppRunner(await web_server())
         await app.setup()
         bind_address = "0.0.0.0"
@@ -105,47 +103,11 @@ class Bot(Client):
         self.LOGGER(__name__).info("Bot stopped. Made By @rohit_1888")
 
 
-# Notify users whose subscriptions are about to expire
-async def notify_expiring_users():
-    """
-    Checks the database for users whose subscriptions expire soon and notifies them.
-    """
-    current_time = datetime.now()
-    notify_time = current_time + timedelta(seconds=NOTIFICATION_TIME_BEFORE_EXPIRY_SECONDS)
-
-    expiring_users = collection.find({
-        "expiration_timestamp": {"$lte": notify_time.isoformat(), "$gt": current_time.isoformat()}
-    })
-
-    for user in expiring_users:
-        user_id = user["user_id"]
-        expiration_time = datetime.fromisoformat(user["expiration_timestamp"])
-        remaining_time = expiration_time - current_time
-
-        try:
-            # Notify the user
-            async with Bot() as bot:
-                await bot.send_message(
-                    chat_id=user_id,
-                    text=f"⏳ Your premium subscription is expiring in "
-                         f"{remaining_time.seconds} seconds! Renew now to continue enjoying premium benefits.",
-                )
-        except Exception as e:
-            print(f"Failed to notify user {user_id}: {e}")
-
-
 async def main():
     scheduler = AsyncIOScheduler()
-
-    # Schedule the task to remove expired users every hour
     scheduler.add_job(remove_expired_users, "interval", seconds=3600)
-
-    # Schedule the notification task
-    scheduler.add_job(notify_expiring_users, "interval", seconds=NOTIFICATION_CHECK_INTERVAL_SECONDS)
-
     scheduler.start()
 
-    # Start the bot
     bot = Bot()
     await bot.start()
 
@@ -155,48 +117,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-import time
-from datetime import datetime
-
-async def notify_premium_expiry(client):
-    current_time = time.time()
-    reminder_window = 1 * 60  # Notify 1 minutes before expiration
-
-    # Fetch premium users
-    premium_users_cursor = collection.find({})
-    
-    # Check for users whose premium is about to expire
-    async for user in premium_users_cursor:
-        user_id = user["user_id"]
-        expiration_timestamp = user["expiration_timestamp"]
-
-        try:
-            # Convert expiration_timestamp to datetime
-            expiration_time = datetime.fromisoformat(expiration_timestamp)
-            expiration_timestamp_unix = expiration_time.timestamp()
-
-            # Debugging: print expiration time, current time, and the time difference
-            print(f"User {user_id} - Expiration: {expiration_timestamp_unix}, Current: {current_time}, Time Remaining: {expiration_timestamp_unix - current_time}")
-
-            # If the premium is about to expire, send a reminder
-            if expiration_timestamp_unix - current_time <= reminder_window:
-                # Send reminder message
-                await client.send_message(
-                    chat_id=user_id,
-                    text=f"⚠️ Your premium status is about to expire in 1 minutes. Please renew to continue enjoying premium features. \n\n"
-                         f"Type /renew to extend your premium subscription."
-                )
-                print(f"Sent reminder to user {user_id} about expiration.")
-
-        except Exception as e:
-            print(f"Error while processing user {user_id}: {str(e)}")
-
-# Example of how you might call this with apscheduler
-async def start_scheduled_task(client):
-    scheduler = AsyncIOScheduler()
-    
-    # Schedule the job to notify users every minute (or any other interval)
-    scheduler.add_job(lambda: notify_premium_expiry(client), 'interval', minutes=1)
-    scheduler.start()
