@@ -347,29 +347,38 @@ Unsuccessful: <code>{unsuccessful}</code></b>"""
         await msg.delete()
 
 
-
 # Command to add premium user
 @Bot.on_message(filters.private & filters.command('addpaid') & filters.user(ADMINS))
 async def add_premium_user_command(client, msg):
-    if len(msg.command) != 3:
-        await msg.reply_text("Usage: /addpaid <user_id> <time_limit_minutes>")
+    if len(msg.command) != 4:
+        await msg.reply_text("Usage: /addpaid <user_id> <time_value> <time_unit (m/d)>")
         return
 
     try:
         user_id = int(msg.command[1])
-        time_limit_minutes = int(msg.command[2])
+        time_value = int(msg.command[2])
+        time_unit = msg.command[3].lower()  # 'm' or 'd'
 
-        await add_premium(user_id, time_limit_minutes)
+        # Call add_premium function
+        expiration_time = await add_premium(user_id, time_value, time_unit)
 
+        # Notify the admin about the premium activation
         await msg.reply_text(
-            f"User {user_id} added as a premium user for {time_limit_minutes} minutes."
+            f"User {user_id} added as a premium user for {time_value} {time_unit}.\n"
+            f"Expiration Time: {expiration_time}"
         )
+
+        # Notify the user about their premium status
         await client.send_message(
             chat_id=user_id,
-            text=f"🎉 Congratulations! You have been upgraded to premium for {time_limit_days} days.",
+            text=(
+                f"🎉 Congratulations! You have been upgraded to premium for {time_value} {time_unit}.\n\n"
+                f"Expiration Time: {expiration_time}"
+            ),
         )
+
     except ValueError:
-        await msg.reply_text("Invalid user_id or time_limit_minutes. Please recheck.")
+        await msg.reply_text("Invalid input. Please check the user_id, time_value, and time_unit.")
     except Exception as e:
         await msg.reply_text(f"An error occurred: {str(e)}")
 
@@ -391,9 +400,13 @@ async def pre_remove_user(client: Client, msg: Message):
 # Command to list active premium users
 @Bot.on_message(filters.private & filters.command('listpaid') & filters.user(ADMINS))
 async def list_premium_users_command(client, message):
+    # Define IST timezone
+    ist = timezone("Asia/Kolkata")
+
+    # Retrieve all users from the collection
     premium_users_cursor = collection.find({})
     premium_user_list = ['Active Premium Users in database:']
-    current_time = time.time()
+    current_time = datetime.now(ist)  # Get current time in IST
 
     # Use async for to iterate over the async cursor
     async for user in premium_users_cursor:
@@ -401,13 +414,13 @@ async def list_premium_users_command(client, message):
         expiration_timestamp = user["expiration_timestamp"]
 
         try:
-            # Convert expiration_timestamp to a datetime object
-            expiration_time = datetime.fromisoformat(expiration_timestamp)
+            # Convert expiration_timestamp to a timezone-aware datetime object in IST
+            expiration_time = datetime.fromisoformat(expiration_timestamp).astimezone(ist)
 
-            # Convert expiration_time to timestamp for comparison
-            expiration_timestamp_unix = expiration_time.timestamp()
+            # Calculate remaining time
+            remaining_time = expiration_time - current_time
 
-            if expiration_timestamp_unix < current_time:
+            if remaining_time.total_seconds() <= 0:
                 # Remove expired users from the database
                 await collection.delete_one({"user_id": user_id})
                 continue  # Skip to the next user if this one is expired
@@ -417,9 +430,7 @@ async def list_premium_users_command(client, message):
             username = user_info.username if user_info.username else "No Username"
             first_name = user_info.first_name
 
-            # Calculate remaining time
-            remaining_time = expiration_time - datetime.now()
-
+            # Calculate days, hours, minutes, seconds left
             days, hours, minutes, seconds = (
                 remaining_time.days,
                 remaining_time.seconds // 3600,
@@ -428,6 +439,7 @@ async def list_premium_users_command(client, message):
             )
             expiry_info = f"{days}d {hours}h {minutes}m {seconds}s left"
 
+            # Add user details to the list
             premium_user_list.append(
                 f"UserID: <code>{user_id}</code>\n"
                 f"User: @{username}\n"
@@ -444,6 +456,5 @@ async def list_premium_users_command(client, message):
         await message.reply_text("I found 0 active premium users in my DB")
     else:
         await message.reply_text("\n\n".join(premium_user_list), parse_mode=None)
-
 
 
