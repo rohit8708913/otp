@@ -69,10 +69,10 @@ async def login(bot: Client, message: Message):
     except Exception as e:
         return await message.reply(f"⚠️ Error in login: `{e}`")
 
-    await bot.send_message(user_id, "<b>Account logged in successfully.\nUse /sessions to view all your sessions.</b>")
+    await bot.send_message(user_id, "<b>Account logged in successfully.\nUse /session to view all your sessions.</b>")
 
 
-@Client.on_message(filters.private & filters.user(ADMINS) & filters.command('sessions'))
+@Client.on_message(filters.private & filters.user(ADMINS) & filters.command('session'))
 async def session_info(client, message):
     user_id = message.from_user.id
     user_sessions = await db.get_sessions(user_id)
