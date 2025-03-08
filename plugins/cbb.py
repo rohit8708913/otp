@@ -2,11 +2,15 @@ from pyrogram import __version__
 from bot import Bot
 from config import OWNER_ID
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
-from config import PRICE1, PRICE2, PRICE3, PRICE4, PRICE5, UPI_ID, UPI_IMAGE_URL, SCREENSHOT_URL, QR_PIC
+from config import *
+from database.database import *
+
 
 @Bot.on_callback_query()
 async def cb_handler(client: Bot, query: CallbackQuery):
     data = query.data
+    user_id = query.from_user.id
+
     if data == "about":
         await query.message.edit_text(
             text=(
@@ -16,19 +20,18 @@ async def cb_handler(client: Bot, query: CallbackQuery):
             ),
             disable_web_page_preview=True,
             reply_markup=InlineKeyboardMarkup(
-                [
-                    [InlineKeyboardButton("🔒 Close", callback_data="close")]
-                ]
+                [[InlineKeyboardButton("🔒 Close", callback_data="close")]]
             )
         )
+
     elif data == "close":
         await query.message.delete()
         try:
             await query.message.reply_to_message.delete()
         except:
             pass
+
     elif data == "buy_prem":
-        # Delete the current message and send a new one with the photo
         await query.message.delete()
         await client.send_photo(
             chat_id=query.message.chat.id,
@@ -50,10 +53,21 @@ async def cb_handler(client: Bot, query: CallbackQuery):
                 [
                     [
                         InlineKeyboardButton(
-                            "Send Payment Screenshot(ADMIN) 📸", url=(SCREENSHOT_URL)
+                            "Send Payment Screenshot(ADMIN) 📸", url=SCREENSHOT_URL
                         )
                     ],
                     [InlineKeyboardButton("🔒 Close", callback_data="close")],
                 ]
             )
         )
+
+    elif data.startswith("logout_"):
+        session_index = int(data.split("_")[1]) - 1
+        user_sessions = await db.get_sessions(user_id)
+
+        if session_index >= len(user_sessions):
+            return await query.answer("⚠️ Invalid session selection.", show_alert=True)
+
+        session_to_remove = user_sessions[session_index]
+        await db.remove_session(user_id, session_to_remove)
+        await query.message.edit_text("✅ Session removed successfully!")
