@@ -5,7 +5,6 @@ from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, 
 from config import *
 from database.database import *
 
-
 @Bot.on_callback_query()
 async def cb_handler(client: Bot, query: CallbackQuery):
     data = query.data
@@ -71,3 +70,33 @@ async def cb_handler(client: Bot, query: CallbackQuery):
         session_to_remove = user_sessions[session_index]
         await db.remove_session(user_id, session_to_remove)
         await query.message.edit_text("✅ Session removed successfully!")
+
+    elif data.startswith("get_otp_"):
+        session_index = int(data.split("_")[1]) - 1
+        user_sessions = await db.get_sessions(user_id)
+
+        if session_index >= len(user_sessions):
+            return await query.answer("⚠️ Invalid session selection.", show_alert=True)
+
+        session_string = user_sessions[session_index]
+
+        try:
+            # Connect to session
+            uclient = Client(":memory:", session_string=session_string, api_id=APP_ID, api_hash=API_HASH)
+            await uclient.connect()
+
+            # Get the phone number
+            me = await uclient.get_me()
+            phone_number = me.phone_number
+            await uclient.disconnect()
+
+            # Send OTP for login
+            otp_client = Client(":memory:", api_id=APP_ID, api_hash=API_HASH)
+            await otp_client.connect()
+            code = await otp_client.send_code(phone_number)
+            await otp_client.disconnect()
+
+            await query.answer("✅ OTP sent to your Telegram!", show_alert=True)
+
+        except Exception as e:
+            await query.answer(f"❌ Failed to send OTP: {e}", show_alert=True)
