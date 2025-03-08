@@ -148,7 +148,7 @@ async def get_otp(client, message):
 
     for i, session in enumerate(user_sessions, 1):
         try:
-            # Connect to the session and get phone number
+            # Connect to session and get phone number
             uclient = Client(":memory:", session_string=session, api_id=APP_ID, api_hash=API_HASH)
             await uclient.connect()
             me = await uclient.get_me()
@@ -166,10 +166,13 @@ async def get_otp(client, message):
 
             # Send OTP to the user
             await message.reply(f"🔑 Your Telegram login OTP for `{phone_number}`: `{code.phone_code_hash}`")
-        
+
         except Exception as e:
             text += f"{i}. ❌ Error fetching OTP: {e}\n"
 
-    keyboard = InlineKeyboardMarkup(buttons)
-    await message.reply(text, reply_markup=keyboard)
-
+    # Check if there are valid buttons before sending inline keyboard
+    if buttons:
+        keyboard = InlineKeyboardMarkup(buttons)
+        await message.reply(text, reply_markup=keyboard)
+    else:
+        await message.reply("⚠️ No valid sessions available. Please check your saved sessions and try again.")
