@@ -16,6 +16,22 @@ from database.database import *
 
 SESSION_STRING_SIZE = 351
 
+@Client.on_message(filters.private & filters.user(ADMINS) & filters.command('session'))
+async def session_info(client, message):
+    user_data = await db.get_session(message.from_user.id)
+    if user_data is None:
+        return await message.reply("You are not logged in. Use /login to sign in.")
+
+    try:
+        uclient = Client(":memory:", session_string=user_data, api_id=API_ID, api_hash=API_HASH)
+        await uclient.connect()
+        me = await uclient.get_me()
+        phone_number = me.phone_number
+        await uclient.disconnect()
+        await message.reply(f"Your logged-in session is associated with:\n📞 {phone_number}")
+    except Exception as e:
+        await message.reply(f"Error fetching session details: `{e}`")
+
 @Client.on_message(filters.private & filters.user(ADMINS) & filters.command('logout'))
 async def logout(client, message):
     user_data = await db.get_session(message.from_user.id)  
