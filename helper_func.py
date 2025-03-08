@@ -12,7 +12,7 @@ from shortzy import Shortzy
 import requests
 import time
 from datetime import datetime
-from database.database import user_data, db_verify_status, db_update_verify_status
+from database.database import *
 
 async def is_subscribed(filter, client, update):
     if not (FORCE_SUB_CHANNEL or FORCE_SUB_CHANNEL2):
