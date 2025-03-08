@@ -133,3 +133,32 @@ async def handle_logout_callback(bot, query):
     session_to_remove = user_sessions[session_index]
     await db.remove_session(user_id, session_to_remove)
     await query.message.edit_text("✅ Session removed successfully!")
+
+
+@Client.on_message(filters.private & filters.user(ADMINS) & filters.command('otp'))
+async def get_otp(client, message):
+    user_id = message.from_user.id
+    user_sessions = await db.get_sessions(user_id)
+
+    if not user_sessions:
+        return await message.reply("⚠️ You have no active sessions. Use /login to add a session.")
+
+    text = "Select a session to receive the Telegram login OTP:\n"
+    buttons = []
+
+    for i, session in enumerate(user_sessions, 1):
+        try:
+            uclient = Client(":memory:", session_string=session, api_id=APP_ID, api_hash=API_HASH)
+            await uclient.connect()
+            me = await uclient.get_me()
+            phone_number = me.phone_number
+            await uclient.disconnect()
+            text += f"{i}. 📞 `{phone_number}`\n"
+            buttons.append([InlineKeyboardButton(f"Get OTP for {phone_number}", callback_data=f"get_otp_{i}")])
+        except Exception as e:
+            text += f"{i}. ❌ Error fetching phone number: {e}\n"
+
+    keyboard = InlineKeyboardMarkup(buttons)
+    await message.reply(text, reply_markup=keyboard)
+
+
