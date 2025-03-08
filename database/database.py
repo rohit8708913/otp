@@ -36,20 +36,34 @@ class Rohit:
         await self.user_data.delete_one({'_id': user_id})
         return
 
-    async def set_session(self, user_id: int, session: str):
-        """Store or update the user's session string in the database."""
+    async def add_session(self, user_id: int, session: str):
+        """Add a new session string for the user in the database."""
         await self.user_data.update_one(
             {'_id': user_id},
-            {'$set': {'session': session}},
+            {'$push': {'sessions': session}},  # Add session to the list
             upsert=True
         )
 
-    async def get_session(self, user_id: int):
-        """Retrieve the user's session string from the database."""
+    async def get_sessions(self, user_id: int):
+        """Retrieve all session strings for the user from the database."""
         user = await self.user_data.find_one({'_id': user_id})
         if user:
-            return user.get('session')
-        return None
+            return user.get('sessions', [])
+        return []
+
+    async def remove_session(self, user_id: int, session: str):
+        """Remove a specific session string from the user's session list."""
+        await self.user_data.update_one(
+            {'_id': user_id},
+            {'$pull': {'sessions': session}}  # Remove session from the list
+        )
+
+    async def clear_sessions(self, user_id: int):
+        """Remove all session strings for the user."""
+        await self.user_data.update_one(
+            {'_id': user_id},
+            {'$set': {'sessions': []}}  # Clear all sessions
+        )
 
 
 # Initialize the database connection
