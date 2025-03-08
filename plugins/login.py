@@ -16,81 +16,120 @@ from database.database import *
 
 SESSION_STRING_SIZE = 351
 
-@Client.on_message(filters.private & filters.user(ADMINS) & filters.command('session'))
-async def session_info(client, message):
-    user_data = await db.get_session(message.from_user.id)
-    if user_data is None:
-        return await message.reply("You are not logged in. Use /login to sign in.")
-
-    try:
-        uclient = Client(":memory:", session_string=user_data, api_id=APP_ID, api_hash=API_HASH)
-        await uclient.connect()
-        me = await uclient.get_me()
-        phone_number = me.phone_number
-        await uclient.disconnect()
-        await message.reply(f"Your logged-in session is associated with:\n📞 {phone_number}")
-    except Exception as e:
-        await message.reply(f"Error fetching session details: `{e}`")
-
-@Client.on_message(filters.private & filters.user(ADMINS) & filters.command('logout'))
-async def logout(client, message):
-    user_data = await db.get_session(message.from_user.id)  
-    if user_data is None:
-        return 
-    await db.set_session(message.from_user.id, session=None)  
-    await message.reply("Logout Successfully ♦")
-
 @Client.on_message(filters.private & filters.user(ADMINS) & filters.command('login'))
-async def main(bot: Client, message: Message):
-    user_data = await db.get_session(message.from_user.id)
-    if user_data is not None:
-        await message.reply("Your Are Already Logged In. First /logout Your Old Session. Then Do Login.")
-        return 
-    user_id = int(message.from_user.id)
-    phone_number_msg = await bot.ask(chat_id=user_id, text="<b>Please send your phone number which includes country code</b>\n<b>Example:</b> <code>+13124562345, +9171828181889</code>")
-    if phone_number_msg.text=='/cancel':
-        return await phone_number_msg.reply('<b>process cancelled !</b>')
+async def login(bot: Client, message: Message):
+    user_id = message.from_user.id
+    user_sessions = await db.get_sessions(user_id)
+
+    if len(user_sessions) >= 3:  # Set a session limit (change as needed)
+        return await message.reply("⚠️ You have reached the maximum session limit. Remove an old session before adding a new one.")
+
+    phone_number_msg = await bot.ask(user_id, "<b>Send your phone number including the country code.</b>\nExample: <code>+13124562345, +9171828181889</code>")
+    if phone_number_msg.text == '/cancel':
+        return await phone_number_msg.reply('<b>Process cancelled!</b>')
+
     phone_number = phone_number_msg.text
     client = Client(":memory:", APP_ID, API_HASH)
     await client.connect()
     await phone_number_msg.reply("Sending OTP...")
+
     try:
         code = await client.send_code(phone_number)
-        phone_code_msg = await bot.ask(user_id, "Please check for an OTP in official telegram account. If you got it, send OTP here after reading the below format. \n\nIf OTP is `12345`, please send it as `1 2 3 4 5`.\n\nEnter /cancel to cancel The Procces", filters=filters.text, timeout=600)
+        phone_code_msg = await bot.ask(user_id, "Enter the OTP as `1 2 3 4 5`.\nType /cancel to cancel.", filters=filters.text, timeout=600)
     except PhoneNumberInvalid:
-        await phone_number_msg.reply('`PHONE_NUMBER` is invalid.')
-        return
-    if phone_code_msg.text=='/cancel':
-        return await phone_code_msg.reply('<b>process cancelled !</b>')
+        return await phone_number_msg.reply('⚠️ Invalid phone number.')
+
+    if phone_code_msg.text == '/cancel':
+        return await phone_code_msg.reply('<b>Process cancelled!</b>')
+
     try:
         phone_code = phone_code_msg.text.replace(" ", "")
         await client.sign_in(phone_number, code.phone_code_hash, phone_code)
     except PhoneCodeInvalid:
-        await phone_code_msg.reply('OTP is invalid.')
-        return
+        return await phone_code_msg.reply('⚠️ Invalid OTP.')
     except PhoneCodeExpired:
-        await phone_code_msg.reply('OTP is expired.')
-        return
+        return await phone_code_msg.reply('⚠️ OTP expired.')
     except SessionPasswordNeeded:
-        two_step_msg = await bot.ask(user_id, 'Your account has enabled two-step verification. Please provide the password.\n\nEnter /cancel to cancel The Procces', filters=filters.text, timeout=300)
-        if two_step_msg.text=='/cancel':
-            return await two_step_msg.reply('<b>process cancelled !</b>')
+        password_msg = await bot.ask(user_id, 'Enter your two-step verification password.\nType /cancel to cancel.', filters=filters.text, timeout=300)
+        if password_msg.text == '/cancel':
+            return await password_msg.reply('<b>Process cancelled!</b>')
         try:
-            password = two_step_msg.text
-            await client.check_password(password=password)
+            await client.check_password(password_msg.text)
         except PasswordHashInvalid:
-            await two_step_msg.reply('Invalid Password Provided')
-            return
-    string_session = await client.export_session_string()
+            return await password_msg.reply('⚠️ Incorrect password.')
+
+    session_string = await client.export_session_string()
     await client.disconnect()
-    if len(string_session) < SESSION_STRING_SIZE:
-        return await message.reply('<b>invalid session sring</b>')
+
+    if len(session_string) < SESSION_STRING_SIZE:
+        return await message.reply('<b>Invalid session string.</b>')
+
     try:
-        user_data = await db.get_session(message.from_user.id)
-        if user_data is None:
-            uclient = Client(":memory:", session_string=string_session, api_id=APP_ID, api_hash=API_HASH)
-            await uclient.connect()
-            await db.set_session(message.from_user.id, session=string_session)
+        await db.add_session(user_id, session_string)
     except Exception as e:
-        return await message.reply_text(f"<b>ERROR IN LOGIN:</b> `{e}`")
-    await bot.send_message(message.from_user.id, "<b>Account Login Successfully.\n\nIf You Get Any Error Then /logout first and /login again</b>")
+        return await message.reply(f"⚠️ Error in login: `{e}`")
+
+    await bot.send_message(user_id, "<b>Account logged in successfully.\nUse /sessions to view all your sessions.</b>")
+
+
+@Client.on_message(filters.private & filters.user(ADMINS) & filters.command('sessions'))
+async def session_info(client, message):
+    user_id = message.from_user.id
+    user_sessions = await db.get_sessions(user_id)
+
+    if not user_sessions:
+        return await message.reply("⚠️ You have no active sessions. Use /login to add a session.")
+
+    text = "Your Active Sessions:\n"
+    for i, session in enumerate(user_sessions, 1):
+        try:
+            uclient = Client(":memory:", session_string=session, api_id=APP_ID, api_hash=API_HASH)
+            await uclient.connect()
+            me = await uclient.get_me()
+            phone_number = me.phone_number
+            await uclient.disconnect()
+            text += f"{i}. 📞 `{phone_number}`\n"
+        except Exception as e:
+            text += f"{i}. ❌ Error fetching phone number: {e}\n"
+
+    await message.reply(text)
+
+@Client.on_message(filters.private & filters.user(ADMINS) & filters.command('logout'))
+async def logout(bot, message):
+    user_id = message.from_user.id
+    user_sessions = await db.get_sessions(user_id)
+
+    if not user_sessions:
+        return await message.reply("⚠️ You have no active sessions.")
+
+    session_text = "Select a session to remove:\n"
+    buttons = []
+    
+    for i, session in enumerate(user_sessions, 1):
+        try:
+            uclient = Client(":memory:", session_string=session, api_id=APP_ID, api_hash=API_HASH)
+            await uclient.connect()
+            me = await uclient.get_me()
+            phone_number = me.phone_number
+            await uclient.disconnect()
+            session_text += f"{i}. 📞 `{phone_number}`\n"
+            buttons.append([InlineKeyboardButton(f"Logout {phone_number}", callback_data=f"logout_{i}")])
+        except:
+            session_text += f"{i}. ❌ *Error retrieving phone number*\n"
+            buttons.append([InlineKeyboardButton(f"Logout Session {i}", callback_data=f"logout_{i}")])
+
+    keyboard = InlineKeyboardMarkup(buttons)
+    await message.reply(session_text, reply_markup=keyboard)
+
+@Client.on_callback_query(filters.regex(r"logout_(\d+)"))
+async def handle_logout_callback(bot, query):
+    user_id = query.from_user.id
+    session_index = int(query.matches[0].group(1)) - 1
+
+    user_sessions = await db.get_sessions(user_id)
+    if session_index >= len(user_sessions):
+        return await query.answer("⚠️ Invalid session selection.", show_alert=True)
+
+    session_to_remove = user_sessions[session_index]
+    await db.remove_session(user_id, session_to_remove)
+    await query.message.edit_text("✅ Session removed successfully!")
