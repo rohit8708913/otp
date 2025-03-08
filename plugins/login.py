@@ -23,7 +23,7 @@ async def session_info(client, message):
         return await message.reply("You are not logged in. Use /login to sign in.")
 
     try:
-        uclient = Client(":memory:", session_string=user_data, api_id=API_ID, api_hash=API_HASH)
+        uclient = Client(":memory:", session_string=user_data, api_id=APP_ID, api_hash=API_HASH)
         await uclient.connect()
         me = await uclient.get_me()
         phone_number = me.phone_number
