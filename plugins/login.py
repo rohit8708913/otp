@@ -151,6 +151,7 @@ async def get_otp(client, message):
     if not user_sessions:
         return await message.reply("⚠️ You have no active sessions. Use /login to add a session.")
 
+    possible_senders = ["+42777", "Telegram", "777000"]  # Possible OTP senders
     text = "Your Active Sessions:\n"
     buttons = []
     valid_sessions = []
@@ -165,14 +166,22 @@ async def get_otp(client, message):
             phone_number = me.phone_number
             print(f"DEBUG: Connected to {phone_number}")  # Debugging
 
-            otp_code = None  # Variable to store OTP
+            otp_code = None
 
-            async for msg in uclient.get_chat_history("+42777", limit=5):
-                if msg.text and ("login code" in msg.text or "code" in msg.text):
-                    otp_code = "".join(filter(str.isdigit, msg.text))
-                    await message.reply(f"🔑 Your OTP for `{phone_number}`: `{otp_code}`")
-                    await uclient.read_history("+42777")  # Mark message as read
-                    break
+            # Try multiple senders to find OTP messages
+            for sender in possible_senders:
+                try:
+                    async for msg in uclient.get_chat_history(sender, limit=5):
+                        if msg.text and ("login code" in msg.text or "code" in msg.text):
+                            otp_code = "".join(filter(str.isdigit, msg.text))
+                            await message.reply(f"🔑 Your OTP for `{phone_number}`: `{otp_code}`")
+                            await uclient.read_history(sender)  # Mark message as read
+                            break
+                except Exception as e:
+                    print(f"DEBUG: Failed to fetch OTP from {sender}: {e}")  # Debugging
+
+                if otp_code:
+                    break  # Stop checking other senders if OTP is found
 
             if not otp_code:
                 await message.reply(f"⚠️ No new OTP messages found for `{phone_number}`.")
