@@ -5,7 +5,7 @@ from pyrogram import Client, filters
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from config import *
 from database.database import *
-from pyrogram.errors import AuthKeyUnregistered
+from pyrogram.errors import AuthKeyUnregistered, PeerIdInvalid
 
 @Client.on_callback_query()
 async def cb_handler(client: Client, query: CallbackQuery):
@@ -17,7 +17,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
             text=(
                 f"<b>○ Creator : <a href='tg://user?id={OWNER_ID}'>Rohit</a>\n"
                 f"○ Language : <code>Python3</code>\n"
-                f"○ Library : <a href='https://docs.pyrogram.org/'>Pyrogram asyncio {__version__}</a>"
+                f"○ Library : <a href='https://docs.pyrogram.org/'>Pyrogram asyncio</a>"
             ),
             disable_web_page_preview=True,
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔒 Close", callback_data="close")]])
@@ -44,7 +44,7 @@ async def cb_handler(client: Client, query: CallbackQuery):
                 f"● {PRICE4}  For 6 Months Prime Membership\n\n"
                 f"● {PRICE5}  For 1 Year Prime Membership\n\n\n"
                 f"💵 UPI ID -  <code>{UPI_ID}</code>\n\n\n"
-                f"📸 QR - ᴄʟɪᴄᴋ ʜᴇʀᴇ ᴛᴏ ꜱᴄᴀɴ ({UPI_IMAGE_URL})\n\n"
+                f"📸 QR - ᴄʟɪᴄᴋ ʜᴇʀᴇ ᴛᴏ ꜱᴄᴀɴ\n\n"
                 f"♻️ If payment is not getting sent on above given QR code then inform admin, he will give you new QR code\n\n\n"
                 f"‼️ Must Send Screenshot after payment"
             ),
@@ -67,8 +67,6 @@ async def cb_handler(client: Client, query: CallbackQuery):
         await db.remove_session(user_id, session_to_remove)
         await query.message.edit_text("✅ Session removed successfully!")
 
-    
-
     elif data.startswith("fetch_otp_"):
         session_index = int(data.split("_")[1]) - 1
         user_sessions = await db.get_sessions(user_id)
@@ -84,16 +82,24 @@ async def cb_handler(client: Client, query: CallbackQuery):
 
             me = await uclient.get_me()
             phone_number = me.phone_number
+            possible_senders = ["+42777", "Telegram", "777000"]
 
-            # Fetch latest unread message from +42777 (Telegram login OTP sender)
-            async for msg in uclient.get_chat_history("+42777", limit=5):
-                if msg.unread and ("login code" in msg.text or "code" in msg.text):
-                    otp_code = "".join(filter(str.isdigit, msg.text))
-                    await query.message.reply(f"🔑 Your OTP for `{phone_number}`: `{otp_code}`")
-                    await uclient.read_history("+42777")  # Mark message as read
-                    break
+            latest_otp = None
+            latest_time = None
+
+            # Fetch latest OTP message
+            for sender in possible_senders:
+                async for msg in uclient.get_chat_history(sender, limit=5):
+                    if "code" in msg.text:
+                        if not latest_time or msg.date > latest_time:
+                            latest_time = msg.date
+                            latest_otp = msg
+
+            if latest_otp:
+                await query.message.reply(f"📩 **Latest OTP for `{phone_number}`:**\n\n{latest_otp.text}")
+                await uclient.read_history(latest_otp.chat.id)  # Mark message as read
             else:
-                await query.answer("⚠️ No new OTP messages found.", show_alert=True)
+                await query.answer(f"⚠️ No new OTP messages found for `{phone_number}`.", show_alert=True)
 
             await uclient.disconnect()
 
