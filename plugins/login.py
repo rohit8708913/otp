@@ -146,23 +146,25 @@ async def get_otp(client, message):
     user_id = message.from_user.id
     user_sessions = await db.get_sessions(user_id)
 
+    print(f"DEBUG: Sessions for {user_id}: {user_sessions}")  # Check stored sessions
+
     if not user_sessions:
         return await message.reply("⚠️ You have no active sessions. Use /login to add a session.")
 
     text = "Your Active Sessions:\n"
     buttons = []
-
     valid_sessions = []
 
     for i, session in enumerate(user_sessions, 1):
+        print(f"DEBUG: Checking session {i}: {session[:10]}...")  # Print partial session
+
         try:
-            # Connect to the session
             uclient = Client(":memory:", session_string=session, api_id=APP_ID, api_hash=API_HASH)
             await uclient.connect()
             me = await uclient.get_me()
             phone_number = me.phone_number
+            print(f"DEBUG: Connected to {phone_number}")  # Log successful connection
 
-            # Fetch the latest unread OTP message from Telegram (official sender)
             otp_found = False
             async for msg in uclient.get_chat_history("Telegram", limit=5):
                 if "login code" in msg.text or "code" in msg.text:
@@ -176,18 +178,15 @@ async def get_otp(client, message):
                 await message.reply(f"⚠️ No new OTP messages found for `{phone_number}`.")
 
             await uclient.disconnect()
-
             valid_sessions.append(session)
             text += f"{i}. 📞 `{phone_number}`\n"
             buttons.append([InlineKeyboardButton(f"Fetch OTP for {phone_number}", callback_data=f"fetch_otp_{i}")])
 
         except AuthKeyUnregistered:
-            text += f"{i}. ❌ Expired session. Please re-login.\n"
-            await db.remove_session(user_id, session)  # Remove invalid session
-        except PeerIdInvalid:
-            text += f"{i}. ❌ Unable to access messages for `{phone_number}`.\n"
+            print(f"DEBUG: Session expired for {session[:10]}")  # Debugging
+            await db.remove_session(user_id, session)  # Remove expired session
         except Exception as e:
-            text += f"{i}. ❌ Error: {e}\n"
+            print(f"DEBUG: Error in session {i}: {e}")  # Debugging
 
     if not valid_sessions:
         return await message.reply("⚠️ No valid sessions found. Please re-login.")
