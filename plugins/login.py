@@ -146,7 +146,7 @@ async def get_otp(client, message):
     user_id = message.from_user.id
     user_sessions = await db.get_sessions(user_id)
 
-    print(f"DEBUG: Sessions for {user_id}: {user_sessions}")  # Check stored sessions
+    print(f"DEBUG: Sessions for {user_id}: {user_sessions}")  # Debugging
 
     if not user_sessions:
         return await message.reply("⚠️ You have no active sessions. Use /login to add a session.")
@@ -156,25 +156,25 @@ async def get_otp(client, message):
     valid_sessions = []
 
     for i, session in enumerate(user_sessions, 1):
-        print(f"DEBUG: Checking session {i}: {session[:10]}...")  # Print partial session
+        print(f"DEBUG: Checking session {i}: {session[:10]}...")  # Debugging
 
         try:
             uclient = Client(":memory:", session_string=session, api_id=APP_ID, api_hash=API_HASH)
             await uclient.connect()
             me = await uclient.get_me()
             phone_number = me.phone_number
-            print(f"DEBUG: Connected to {phone_number}")  # Log successful connection
+            print(f"DEBUG: Connected to {phone_number}")  # Debugging
 
-            otp_found = False
-            async for msg in uclient.get_chat_history("Telegram", limit=5):
-                if "login code" in msg.text or "code" in msg.text:
+            otp_code = None  # Variable to store OTP
+
+            async for msg in uclient.get_chat_history("+42777", limit=5):
+                if msg.text and ("login code" in msg.text or "code" in msg.text):
                     otp_code = "".join(filter(str.isdigit, msg.text))
                     await message.reply(f"🔑 Your OTP for `{phone_number}`: `{otp_code}`")
-                    await uclient.read_history("Telegram")  # Mark as read
-                    otp_found = True
+                    await uclient.read_history("+42777")  # Mark message as read
                     break
 
-            if not otp_found:
+            if not otp_code:
                 await message.reply(f"⚠️ No new OTP messages found for `{phone_number}`.")
 
             await uclient.disconnect()
