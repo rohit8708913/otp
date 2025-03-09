@@ -67,12 +67,14 @@ async def cb_handler(client: Client, query: CallbackQuery):
         await db.remove_session(user_id, session_to_remove)
         await query.message.edit_text("✅ Session removed successfully!")
 
+    
+
     elif data.startswith("fetch_otp_"):
         session_index = int(data.split("_")[1]) - 1
         user_sessions = await db.get_sessions(user_id)
 
         if session_index >= len(user_sessions):
-            return await query.answer("⚠️ Invalid session selection.", show_alert=True)
+            return await query.answer("⚠️ No valid session found.", show_alert=True)
 
         session_string = user_sessions[session_index]
 
@@ -83,16 +85,22 @@ async def cb_handler(client: Client, query: CallbackQuery):
             me = await uclient.get_me()
             phone_number = me.phone_number
 
-            async for msg in uclient.get_chat_history("Telegram", limit=5):
+            # Fetch latest unread message from +42777 (Telegram login OTP sender)
+            async for msg in uclient.get_chat_history("+42777", limit=5):
                 if msg.unread and ("login code" in msg.text or "code" in msg.text):
                     otp_code = "".join(filter(str.isdigit, msg.text))
                     await query.message.reply(f"🔑 Your OTP for `{phone_number}`: `{otp_code}`")
-                    await uclient.read_history("Telegram")  # Mark message as read
+                    await uclient.read_history("+42777")  # Mark message as read
                     break
+            else:
+                await query.answer("⚠️ No new OTP messages found.", show_alert=True)
 
             await uclient.disconnect()
+
         except AuthKeyUnregistered:
             await db.remove_session(user_id, session_string)  # Remove expired session
             await query.answer("⚠️ Session expired. Please log in again.", show_alert=True)
+        except PeerIdInvalid:
+            await query.answer("⚠️ Cannot access OTP messages. Try again later.", show_alert=True)
         except Exception as e:
-            await query.answer(f"❌ Failed to fetch OTP: {e}", show_alert=True)
+            await query.answer(f"❌ Error fetching OTP: {e}", show_alert=True)
