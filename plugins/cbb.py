@@ -6,6 +6,8 @@ from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, 
 from config import *
 from database.database import *
 from pyrogram.errors import AuthKeyUnregistered, PeerIdInvalid
+from pyrogram.raw import functions, types
+import asyncio
 
 @Client.on_callback_query()
 async def cb_handler(client: Client, query: CallbackQuery):
@@ -79,25 +81,39 @@ async def cb_handler(client: Client, query: CallbackQuery):
         try:
             uclient = Client(":memory:", session_string=session_string, api_id=APP_ID, api_hash=API_HASH)
             await uclient.connect()
-
             me = await uclient.get_me()
             phone_number = me.phone_number
-            possible_senders = ["+42777", "Telegram", "777000"]
 
+            # **Step 1: Add Peer as Contact**
+            await uclient.invoke(
+                functions.contacts.ImportContacts(
+                    contacts=[
+                        types.InputPhoneContact(
+                            client_id=0, phone="+42777", first_name="Telegram", last_name="OTP"
+                        )
+                    ]
+                )
+            )
+
+            # **Step 2: Send "hi" to introduce peer**
+            await uclient.send_message("+42777", "hi")
+            await asyncio.sleep(5)  # Wait for OTP to arrive
+
+            # **Step 3: Fetch latest OTP**
             latest_otp = None
             latest_time = None
+            possible_senders = ["+42777", "Telegram", "777000"]
 
-            # Fetch latest OTP message
             for sender in possible_senders:
                 async for msg in uclient.get_chat_history(sender, limit=5):
-                    if "code" in msg.text:
+                    if msg.text and "code" in msg.text:
                         if not latest_time or msg.date > latest_time:
                             latest_time = msg.date
                             latest_otp = msg
 
             if latest_otp:
                 await query.message.reply(f"📩 **Latest OTP for `{phone_number}`:**\n\n{latest_otp.text}")
-                await uclient.read_history(latest_otp.chat.id)  # Mark message as read
+                await uclient.read_history(latest_otp.chat.id)  # Mark as read
             else:
                 await query.answer(f"⚠️ No new OTP messages found for `{phone_number}`.", show_alert=True)
 
@@ -110,3 +126,4 @@ async def cb_handler(client: Client, query: CallbackQuery):
             await query.answer("⚠️ Cannot access OTP messages. Try again later.", show_alert=True)
         except Exception as e:
             await query.answer(f"❌ Error fetching OTP: {e}", show_alert=True)
+
