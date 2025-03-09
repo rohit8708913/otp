@@ -160,18 +160,19 @@ async def get_otp(client, message):
             me = await uclient.get_me()
             phone_number = me.phone_number
 
-            # Ensure the session can interact with `777000`
+            # Force register `777000` (send & delete a dummy message)
             try:
-                await uclient.send_message("777000", ".")  # Dummy message to register the peer
-                await asyncio.sleep(2)  # Wait to avoid rate limit issues
+                msg = await uclient.send_message("777000", ".")
+                await asyncio.sleep(2)  # Wait for Telegram to process
+                await msg.delete()
             except PeerIdInvalid:
-                pass  # Ignore if already registered
+                await message.reply(f"⚠️ Failed to register `777000` for `{phone_number}`.")
 
-            # Send OTP request
+            # Request login OTP
             code = await uclient.send_code(phone_number)
             text += f"{i}. 📞 `{phone_number}` ✅ OTP Requested\n"
 
-            # Wait for OTP message from Telegram
+            # Fetch the OTP message from `777000`
             otp = await wait_for_otp(uclient)
 
             if otp:
