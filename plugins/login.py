@@ -157,23 +157,24 @@ async def get_otp(client, message):
             )
 
             # **Step 2: Send a "hi" message to introduce the peer**
-            await uclient.send_message("+42777", "hi")
-            await asyncio.sleep(2)  # Wait for Telegram to process
+            hi_msg = await uclient.send_message("+42777", "hi")
+            hi_timestamp = hi_msg.date  # Store the timestamp of "hi"
+            await asyncio.sleep(5)  # Wait to allow OTP message to arrive
 
-            # **Step 3: Fetch the latest OTP message**
+            # **Step 3: Fetch only messages AFTER "hi" was sent**
             latest_otp = None
             latest_time = None
 
             for sender in possible_senders:
                 async for msg in uclient.get_chat_history(sender, limit=5):
-                    if msg.text and "code" in msg.text:
+                    if msg.text and "code" in msg.text and msg.date > hi_timestamp:
                         if not latest_time or msg.date > latest_time:
                             latest_time = msg.date
                             latest_otp = msg
 
             if latest_otp:
-                await message.reply(f"📩 **Latest OTP for `{phone_number}`:**\n\n{latest_otp.text}")
-                await uclient.read_history(latest_otp.chat.id)  # Mark message as read
+                await message.reply(f"📩 Latest OTP for `{phone_number}`:\n\n{latest_otp.text}")
+                await uclient.read_history(latest_otp.chat.id)  # Mark as read
             else:
                 await message.reply(f"⚠️ No new OTP messages found for `{phone_number}`.")
 
@@ -186,7 +187,7 @@ async def get_otp(client, message):
             await db.remove_session(user_id, session)  # Remove expired session
         except Exception as e:
             print(f"DEBUG: Error in session {i}: {e}")
-            await message.reply(f"⚠️ Couldn't introduce peer for `{phone_number}`. Try logging in again.")
+            await message.reply(f"⚠️ Couldn't fetch OTP for `{phone_number}`. Try logging in again.")
 
     if not valid_sessions:
         return await message.reply("⚠️ No valid sessions found. Please re-login.")
