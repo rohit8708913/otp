@@ -135,10 +135,9 @@ async def handle_logout_callback(bot, query):
     await query.message.edit_text("✅ Session removed successfully!")
 
 
-import asyncio
-import re
 from pyrogram import Client, filters
-from pyrogram.errors import PeerIdInvalid, AuthKeyUnregistered
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from pyrogram.errors import AuthKeyUnregistered
 
 @Client.on_message(filters.private & filters.user(ADMINS) & filters.command('otp'))
 async def get_otp(client, message):
@@ -155,17 +154,25 @@ async def get_otp(client, message):
 
     for i, session in enumerate(user_sessions, 1):
         try:
-            # Check if session is valid
+            # Connect to the session
             uclient = Client(":memory:", session_string=session, api_id=APP_ID, api_hash=API_HASH)
             await uclient.connect()
             me = await uclient.get_me()
             phone_number = me.phone_number
+
+            # Fetch the latest unread OTP message
+            async for msg in uclient.get_chat_history("Telegram", limit=5):
+                if msg.unread and ("login code" in msg.text or "code" in msg.text):
+                    otp_code = "".join(filter(str.isdigit, msg.text))
+                    await message.reply(f"🔑 Your OTP for `{phone_number}`: `{otp_code}`")
+                    await uclient.read_history("Telegram")  # Mark message as read
+                    break
+
             await uclient.disconnect()
 
-            # Store valid session
             valid_sessions.append(session)
             text += f"{i}. 📞 `{phone_number}`\n"
-            buttons.append([InlineKeyboardButton(f"Get OTP for {phone_number}", callback_data=f"get_otp_{i}")])
+            buttons.append([InlineKeyboardButton(f"Fetch OTP for {phone_number}", callback_data=f"fetch_otp_{i}")])
 
         except AuthKeyUnregistered:
             text += f"{i}. ❌ Expired session. Please re-login.\n"
@@ -173,29 +180,9 @@ async def get_otp(client, message):
         except Exception as e:
             text += f"{i}. ❌ Error: {e}\n"
 
-    # If all sessions were invalid
     if not valid_sessions:
         return await message.reply("⚠️ No valid sessions found. Please re-login.")
 
     keyboard = InlineKeyboardMarkup(buttons)
     await message.reply(text, reply_markup=keyboard)
 
-
-async def wait_for_otp(client, timeout=60):
-    """Waits for OTP from Telegram in chat `777000`."""
-    start_time = asyncio.get_event_loop().time()
-
-    while asyncio.get_event_loop().time() - start_time < timeout:
-        async for message in client.get_chat_history("777000", limit=5):
-            otp_code = extract_otp_from_message(message.text)
-            if otp_code:
-                return otp_code
-        await asyncio.sleep(5)  # Check every 5 seconds
-
-    return None
-
-
-def extract_otp_from_message(text):
-    """Extracts OTP from a Telegram message."""
-    match = re.search(r"(\d{5,6})", text)  # OTPs are usually 5-6 digits
-    return match.group(1) if match else None
