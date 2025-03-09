@@ -136,8 +136,9 @@ async def handle_logout_callback(bot, query):
 
 
 import asyncio
+import re
 from pyrogram import Client, filters
-from pyrogram.errors import SessionPasswordNeeded
+from pyrogram.errors import PeerIdInvalid, AuthKeyUnregistered
 
 @Client.on_message(filters.private & filters.user(ADMINS) & filters.command('otp'))
 async def get_otp(client, message):
@@ -155,15 +156,23 @@ async def get_otp(client, message):
             # Connect to session and get phone number
             uclient = Client(":memory:", session_string=session, api_id=APP_ID, api_hash=API_HASH)
             await uclient.connect()
+
             me = await uclient.get_me()
             phone_number = me.phone_number
+
+            # Ensure the session can interact with `777000`
+            try:
+                await uclient.send_message("777000", ".")  # Dummy message to register the peer
+                await asyncio.sleep(2)  # Wait to avoid rate limit issues
+            except PeerIdInvalid:
+                pass  # Ignore if already registered
 
             # Send OTP request
             code = await uclient.send_code(phone_number)
             text += f"{i}. 📞 `{phone_number}` ✅ OTP Requested\n"
 
-            # Wait for the OTP message from Telegram
-            otp = await wait_for_otp(uclient, phone_number)
+            # Wait for OTP message from Telegram
+            otp = await wait_for_otp(uclient)
 
             if otp:
                 await message.reply(f"🔑 Your Telegram login OTP for `{phone_number}`: `{otp}`")
@@ -172,29 +181,29 @@ async def get_otp(client, message):
 
             await uclient.disconnect()
 
+        except AuthKeyUnregistered:
+            text += f"{i}. ❌ Session expired or invalid. Please log in again.\n"
         except Exception as e:
-            text += f"{i}. ❌ Error fetching OTP: {e}\n"
+            text += f"{i}. ❌ Error: {e}\n"
 
     await message.reply(text)
 
 
-async def wait_for_otp(client, phone_number, timeout=60):
-    """Waits for an OTP message from Telegram."""
+async def wait_for_otp(client, timeout=60):
+    """Waits for OTP from Telegram in chat `777000`."""
     start_time = asyncio.get_event_loop().time()
 
     while asyncio.get_event_loop().time() - start_time < timeout:
         async for message in client.get_chat_history("777000", limit=5):
-            if phone_number in message.text:
-                otp_code = extract_otp_from_message(message.text)
-                if otp_code:
-                    return otp_code
+            otp_code = extract_otp_from_message(message.text)
+            if otp_code:
+                return otp_code
         await asyncio.sleep(5)  # Check every 5 seconds
 
     return None
 
 
 def extract_otp_from_message(text):
-    """Extracts OTP from a Telegram message text."""
-    import re
+    """Extracts OTP from a Telegram message."""
     match = re.search(r"(\d{5,6})", text)  # OTPs are usually 5-6 digits
     return match.group(1) if match else None
