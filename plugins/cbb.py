@@ -70,7 +70,13 @@ async def cb_handler(client: Client, query: CallbackQuery):
         await query.message.edit_text("✅ Session removed successfully!")
 
     elif data.startswith("fetch_otp_"):
-        session_index = int(data.split("_")[1]) - 1
+        parts = data.split("_")
+    
+    # Validate data format
+        if len(parts) < 2 or not parts[1].isdigit():
+            return await query.answer("⚠️ Invalid OTP request.", show_alert=True)
+
+        session_index = int(parts[1]) - 1
         user_sessions = await db.get_sessions(user_id)
 
         if session_index >= len(user_sessions):
