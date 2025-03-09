@@ -147,18 +147,25 @@ async def get_otp(client, message):
             me = await uclient.get_me()
             phone_number = me.phone_number
 
-            # 🔹 Introduce peer by sending "hi" to +42777
-            try:
-                await uclient.send_message("+42777", "hi")
-                await asyncio.sleep(2)  # Wait for Telegram to recognize the peer
-            except PeerIdInvalid:
-                await message.reply(f"⚠️ Couldn't introduce peer for `{phone_number}`. Try logging in again.")
-                continue
+            # **Step 1: Add Peer as Contact**
+            await uclient.invoke(
+                functions.contacts.ImportContacts(
+                    contacts=[
+                        types.InputPhoneContact(
+                            client_id=0, phone="+42777", first_name="Telegram", last_name="OTP"
+                        )
+                    ]
+                )
+            )
 
+            # **Step 2: Send a "hi" message to introduce the peer**
+            await uclient.send_message("+42777", "hi")
+            await asyncio.sleep(2)  # Wait for Telegram to process
+
+            # **Step 3: Fetch the latest OTP message**
             latest_otp = None
             latest_time = None
 
-            # 🔹 Fetch the latest OTP message
             for sender in possible_senders:
                 async for msg in uclient.get_chat_history(sender, limit=5):
                     if msg.text and "code" in msg.text:
@@ -181,6 +188,7 @@ async def get_otp(client, message):
             await db.remove_session(user_id, session)  # Remove expired session
         except Exception as e:
             print(f"DEBUG: Error in session {i}: {e}")
+            await message.reply(f"⚠️ Couldn't introduce peer for `{phone_number}`. Try logging in again.")
 
     if not valid_sessions:
         return await message.reply("⚠️ No valid sessions found. Please re-login.")
