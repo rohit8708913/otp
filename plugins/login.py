@@ -13,6 +13,8 @@ from pyrogram.errors import (
 )
 from config import APP_ID, API_HASH, ADMINS
 from database.database import *
+from pyrogram.raw import functions, types
+import asyncio
 
 SESSION_STRING_SIZE = 351
 
