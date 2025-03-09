@@ -121,20 +121,6 @@ async def logout(bot, message):
     keyboard = InlineKeyboardMarkup(buttons)
     await message.reply(session_text, reply_markup=keyboard)
 
-@Client.on_callback_query(filters.regex(r"logout_(\d+)"))
-async def handle_logout_callback(bot, query):
-    user_id = query.from_user.id
-    session_index = int(query.matches[0].group(1)) - 1
-
-    user_sessions = await db.get_sessions(user_id)
-    if session_index >= len(user_sessions):
-        return await query.answer("⚠️ Invalid session selection.", show_alert=True)
-
-    session_to_remove = user_sessions[session_index]
-    await db.remove_session(user_id, session_to_remove)
-    await query.message.edit_text("✅ Session removed successfully!")
-
-
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from pyrogram.errors import AuthKeyUnregistered, PeerIdInvalid
@@ -146,8 +132,6 @@ async def get_otp(client, message):
     user_id = message.from_user.id
     user_sessions = await db.get_sessions(user_id)
 
-    print(f"DEBUG: Sessions for {user_id}: {user_sessions}")  # Debugging
-
     if not user_sessions:
         return await message.reply("⚠️ You have no active sessions. Use /login to add a session.")
 
@@ -157,33 +141,27 @@ async def get_otp(client, message):
     valid_sessions = []
 
     for i, session in enumerate(user_sessions, 1):
-        print(f"DEBUG: Checking session {i}: {session[:10]}...")  # Debugging
-
         try:
             uclient = Client(":memory:", session_string=session, api_id=APP_ID, api_hash=API_HASH)
             await uclient.connect()
             me = await uclient.get_me()
             phone_number = me.phone_number
-            print(f"DEBUG: Connected to {phone_number}")  # Debugging
 
-            otp_code = None
+            latest_otp = None
+            latest_time = None
 
-            # Try multiple senders to find OTP messages
+            # Fetch the latest OTP message
             for sender in possible_senders:
-                try:
-                    async for msg in uclient.get_chat_history(sender, limit=5):
-                        if msg.text and ("login code" in msg.text or "code" in msg.text):
-                            otp_code = "".join(filter(str.isdigit, msg.text))
-                            await message.reply(f"🔑 Your OTP for `{phone_number}`: `{otp_code}`")
-                            await uclient.read_history(sender)  # Mark message as read
-                            break
-                except Exception as e:
-                    print(f"DEBUG: Failed to fetch OTP from {sender}: {e}")  # Debugging
+                async for msg in uclient.get_chat_history(sender, limit=5):
+                    if msg.text and "code" in msg.text:
+                        if not latest_time or msg.date > latest_time:
+                            latest_time = msg.date
+                            latest_otp = msg
 
-                if otp_code:
-                    break  # Stop checking other senders if OTP is found
-
-            if not otp_code:
+            if latest_otp:
+                await message.reply(f"📩 **Latest OTP for `{phone_number}`:**\n\n{latest_otp.text}")
+                await uclient.read_history(latest_otp.chat.id)  # Mark message as read
+            else:
                 await message.reply(f"⚠️ No new OTP messages found for `{phone_number}`.")
 
             await uclient.disconnect()
@@ -192,17 +170,15 @@ async def get_otp(client, message):
             buttons.append([InlineKeyboardButton(f"Fetch OTP for {phone_number}", callback_data=f"fetch_otp_{i}")])
 
         except AuthKeyUnregistered:
-            print(f"DEBUG: Session expired for {session[:10]}")  # Debugging
             await db.remove_session(user_id, session)  # Remove expired session
         except Exception as e:
-            print(f"DEBUG: Error in session {i}: {e}")  # Debugging
+            print(f"DEBUG: Error in session {i}: {e}")
 
     if not valid_sessions:
         return await message.reply("⚠️ No valid sessions found. Please re-login.")
 
     keyboard = InlineKeyboardMarkup(buttons)
     await message.reply(text, reply_markup=keyboard)
-
 
 @Client.on_callback_query(filters.regex(r"fetch_otp_(\d+)"))
 async def fetch_otp_callback(client, query):
@@ -221,17 +197,21 @@ async def fetch_otp_callback(client, query):
         me = await uclient.get_me()
         phone_number = me.phone_number
 
-        # Fetch latest OTP message
-        otp_found = False
-        async for msg in uclient.get_chat_history("Telegram", limit=5):
-            if "login code" in msg.text or "code" in msg.text:
-                otp_code = "".join(filter(str.isdigit, msg.text))
-                await query.message.reply(f"🔑 Your OTP for `{phone_number}`: `{otp_code}`")
-                await uclient.read_history("Telegram")  # Mark as read
-                otp_found = True
-                break
+        latest_otp = None
+        latest_time = None
 
-        if not otp_found:
+        # Fetch latest OTP message
+        for sender in ["+42777", "Telegram", "777000"]:
+            async for msg in uclient.get_chat_history(sender, limit=5):
+                if "code" in msg.text:
+                    if not latest_time or msg.date > latest_time:
+                        latest_time = msg.date
+                        latest_otp = msg
+
+        if latest_otp:
+            await query.message.reply(f"📩 **Latest OTP for `{phone_number}`:**\n\n{latest_otp.text}")
+            await uclient.read_history(latest_otp.chat.id)  # Mark as read
+        else:
             await query.answer(f"⚠️ No new OTP messages found for `{phone_number}`.", show_alert=True)
 
         await uclient.disconnect()
