@@ -137,7 +137,9 @@ async def handle_logout_callback(bot, query):
 
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from pyrogram.errors import AuthKeyUnregistered
+from pyrogram.errors import AuthKeyUnregistered, PeerIdInvalid
+from config import APP_ID, API_HASH, ADMINS
+from database.database import db
 
 @Client.on_message(filters.private & filters.user(ADMINS) & filters.command('otp'))
 async def get_otp(client, message):
@@ -160,13 +162,18 @@ async def get_otp(client, message):
             me = await uclient.get_me()
             phone_number = me.phone_number
 
-            # Fetch the latest unread OTP message
+            # Fetch the latest unread OTP message from Telegram (official sender)
+            otp_found = False
             async for msg in uclient.get_chat_history("Telegram", limit=5):
-                if msg.unread and ("login code" in msg.text or "code" in msg.text):
+                if "login code" in msg.text or "code" in msg.text:
                     otp_code = "".join(filter(str.isdigit, msg.text))
                     await message.reply(f"🔑 Your OTP for `{phone_number}`: `{otp_code}`")
-                    await uclient.read_history("Telegram")  # Mark message as read
+                    await uclient.read_history("Telegram")  # Mark as read
+                    otp_found = True
                     break
+
+            if not otp_found:
+                await message.reply(f"⚠️ No new OTP messages found for `{phone_number}`.")
 
             await uclient.disconnect()
 
@@ -177,6 +184,8 @@ async def get_otp(client, message):
         except AuthKeyUnregistered:
             text += f"{i}. ❌ Expired session. Please re-login.\n"
             await db.remove_session(user_id, session)  # Remove invalid session
+        except PeerIdInvalid:
+            text += f"{i}. ❌ Unable to access messages for `{phone_number}`.\n"
         except Exception as e:
             text += f"{i}. ❌ Error: {e}\n"
 
@@ -186,3 +195,43 @@ async def get_otp(client, message):
     keyboard = InlineKeyboardMarkup(buttons)
     await message.reply(text, reply_markup=keyboard)
 
+
+@Client.on_callback_query(filters.regex(r"fetch_otp_(\d+)"))
+async def fetch_otp_callback(client, query):
+    user_id = query.from_user.id
+    session_index = int(query.matches[0].group(1)) - 1
+
+    user_sessions = await db.get_sessions(user_id)
+    if session_index >= len(user_sessions):
+        return await query.answer("⚠️ No valid session found.", show_alert=True)
+
+    session_string = user_sessions[session_index]
+
+    try:
+        uclient = Client(":memory:", session_string=session_string, api_id=APP_ID, api_hash=API_HASH)
+        await uclient.connect()
+        me = await uclient.get_me()
+        phone_number = me.phone_number
+
+        # Fetch latest OTP message
+        otp_found = False
+        async for msg in uclient.get_chat_history("Telegram", limit=5):
+            if "login code" in msg.text or "code" in msg.text:
+                otp_code = "".join(filter(str.isdigit, msg.text))
+                await query.message.reply(f"🔑 Your OTP for `{phone_number}`: `{otp_code}`")
+                await uclient.read_history("Telegram")  # Mark as read
+                otp_found = True
+                break
+
+        if not otp_found:
+            await query.answer(f"⚠️ No new OTP messages found for `{phone_number}`.", show_alert=True)
+
+        await uclient.disconnect()
+
+    except AuthKeyUnregistered:
+        await db.remove_session(user_id, session_string)  # Remove expired session
+        await query.answer("⚠️ Session expired. Please log in again.", show_alert=True)
+    except PeerIdInvalid:
+        await query.answer("⚠️ Cannot access OTP messages. Try again later.", show_alert=True)
+    except Exception as e:
+        await query.answer(f"❌ Error fetching OTP: {e}", show_alert=True)
