@@ -5,9 +5,10 @@ from pyrogram import Client, filters
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from config import *
 from database.database import *
+from pyrogram.errors import AuthKeyUnregistered
 
-@Bot.on_callback_query()
-async def cb_handler(client: Bot, query: CallbackQuery):
+@Client.on_callback_query()
+async def cb_handler(client: Client, query: CallbackQuery):
     data = query.data
     user_id = query.from_user.id
 
@@ -19,9 +20,7 @@ async def cb_handler(client: Bot, query: CallbackQuery):
                 f"○ Library : <a href='https://docs.pyrogram.org/'>Pyrogram asyncio {__version__}</a>"
             ),
             disable_web_page_preview=True,
-            reply_markup=InlineKeyboardMarkup(
-                [[InlineKeyboardButton("🔒 Close", callback_data="close")]]
-            )
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔒 Close", callback_data="close")]])
         )
 
     elif data == "close":
@@ -51,11 +50,7 @@ async def cb_handler(client: Bot, query: CallbackQuery):
             ),
             reply_markup=InlineKeyboardMarkup(
                 [
-                    [
-                        InlineKeyboardButton(
-                            "Send Payment Screenshot(ADMIN) 📸", url=SCREENSHOT_URL
-                        )
-                    ],
+                    [InlineKeyboardButton("Send Payment Screenshot(ADMIN) 📸", url=SCREENSHOT_URL)],
                     [InlineKeyboardButton("🔒 Close", callback_data="close")],
                 ]
             )
@@ -72,14 +67,8 @@ async def cb_handler(client: Bot, query: CallbackQuery):
         await db.remove_session(user_id, session_to_remove)
         await query.message.edit_text("✅ Session removed successfully!")
 
-    elif data.startswith("get_otp_"):
-        parts = data.split("_")
-
-        # Ensure callback data is correctly formatted
-        if len(parts) < 3 or not parts[2].isdigit():
-            return await query.answer("⚠️ Invalid session selection.", show_alert=True)
-
-        session_index = int(parts[2]) - 1
+    elif data.startswith("fetch_otp_"):
+        session_index = int(data.split("_")[1]) - 1
         user_sessions = await db.get_sessions(user_id)
 
         if session_index >= len(user_sessions):
@@ -88,21 +77,22 @@ async def cb_handler(client: Bot, query: CallbackQuery):
         session_string = user_sessions[session_index]
 
         try:
-            # Connect to session and get phone number
             uclient = Client(":memory:", session_string=session_string, api_id=APP_ID, api_hash=API_HASH)
             await uclient.connect()
 
             me = await uclient.get_me()
             phone_number = me.phone_number
+
+            async for msg in uclient.get_chat_history("Telegram", limit=5):
+                if msg.unread and ("login code" in msg.text or "code" in msg.text):
+                    otp_code = "".join(filter(str.isdigit, msg.text))
+                    await query.message.reply(f"🔑 Your OTP for `{phone_number}`: `{otp_code}`")
+                    await uclient.read_history("Telegram")  # Mark message as read
+                    break
+
             await uclient.disconnect()
-
-            # Send OTP for login
-            otp_client = Client(":memory:", api_id=APP_ID, api_hash=API_HASH)
-            await otp_client.connect()
-            code = await otp_client.send_code(phone_number)
-            await otp_client.disconnect()
-
-            await query.answer("✅ OTP sent to your Telegram!", show_alert=True)
-
+        except AuthKeyUnregistered:
+            await db.remove_session(user_id, session_string)  # Remove expired session
+            await query.answer("⚠️ Session expired. Please log in again.", show_alert=True)
         except Exception as e:
-            await query.answer(f"❌ Failed to send OTP: {e}", show_alert=True)
+            await query.answer(f"❌ Failed to fetch OTP: {e}", show_alert=True)
