@@ -148,46 +148,37 @@ async def get_otp(client, message):
     if not user_sessions:
         return await message.reply("⚠️ You have no active sessions. Use /login to add a session.")
 
-    text = "Select a session to receive the Telegram login OTP:\n"
+    text = "Your Active Sessions:\n"
     buttons = []
+
+    valid_sessions = []
 
     for i, session in enumerate(user_sessions, 1):
         try:
-            # Connect to session and get phone number
+            # Check if session is valid
             uclient = Client(":memory:", session_string=session, api_id=APP_ID, api_hash=API_HASH)
             await uclient.connect()
-
             me = await uclient.get_me()
             phone_number = me.phone_number
-
-            # Force register `777000` (send & delete a dummy message)
-            try:
-                msg = await uclient.send_message("777000", ".")
-                await asyncio.sleep(2)  # Wait for Telegram to process
-                await msg.delete()
-            except PeerIdInvalid:
-                await message.reply(f"⚠️ Failed to register `777000` for `{phone_number}`.")
-
-            # Request login OTP
-            code = await uclient.send_code(phone_number)
-            text += f"{i}. 📞 `{phone_number}` ✅ OTP Requested\n"
-
-            # Fetch the OTP message from `777000`
-            otp = await wait_for_otp(uclient)
-
-            if otp:
-                await message.reply(f"🔑 Your Telegram login OTP for `{phone_number}`: `{otp}`")
-            else:
-                await message.reply(f"❌ OTP retrieval failed for `{phone_number}`.")
-
             await uclient.disconnect()
 
+            # Store valid session
+            valid_sessions.append(session)
+            text += f"{i}. 📞 `{phone_number}`\n"
+            buttons.append([InlineKeyboardButton(f"Get OTP for {phone_number}", callback_data=f"get_otp_{i}")])
+
         except AuthKeyUnregistered:
-            text += f"{i}. ❌ Session expired or invalid. Please log in again.\n"
+            text += f"{i}. ❌ Expired session. Please re-login.\n"
+            await db.remove_session(user_id, session)  # Remove invalid session
         except Exception as e:
             text += f"{i}. ❌ Error: {e}\n"
 
-    await message.reply(text)
+    # If all sessions were invalid
+    if not valid_sessions:
+        return await message.reply("⚠️ No valid sessions found. Please re-login.")
+
+    keyboard = InlineKeyboardMarkup(buttons)
+    await message.reply(text, reply_markup=keyboard)
 
 
 async def wait_for_otp(client, timeout=60):
