@@ -37,18 +37,19 @@ class Rohit:
         return
 
     async def add_session(self, user_id: int, session: str, phone_number: str):
-        """Add a new session string with phone number for the user in the database."""
+        """Add a new session string along with the phone number for the user."""
+        session_data = {"session": session, "phone_number": phone_number}  # Store both session and phone number
         await self.user_data.update_one(
             {'_id': user_id},
-            {'$push': {'sessions': {'session': session, 'phone_number': phone_number}}},  # Store both
+            {'$push': {'sessions': session_data}},  # Push as an object, not a plain string
             upsert=True
         )
 
     async def get_sessions(self, user_id: int):
-        """Retrieve all session details (session string + phone number) for the user."""
+        """Retrieve all session objects (each containing session string & phone number)."""
         user = await self.user_data.find_one({'_id': user_id})
         if user:
-            return user.get('sessions', [])
+            return user.get('sessions', [])  # Returns a list of {"session": ..., "phone_number": ...}
         return []
 
     async def remove_session(self, user_id: int, session: str):
