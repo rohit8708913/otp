@@ -156,9 +156,10 @@ async def get_otp(client, message):
                 )
             )
 
-            # **Step 2: Send a "hi" message to introduce the peer**
+            # **Step 2: Send a "hi" message to the OTP sender**
             hi_msg = await uclient.send_message("+42777", "hi")
             hi_timestamp = hi_msg.date  # Store the timestamp of "hi"
+
             await asyncio.sleep(5)  # Wait to allow OTP message to arrive
 
             # **Step 3: Fetch only messages AFTER "hi" was sent**
@@ -167,7 +168,7 @@ async def get_otp(client, message):
 
             for sender in possible_senders:
                 async for msg in uclient.get_chat_history(sender, limit=5):
-                    if msg.text and "code" in msg.text and msg.date > hi_timestamp:
+                    if msg.date > hi_timestamp and "code" in msg.text.lower():
                         if not latest_time or msg.date > latest_time:
                             latest_time = msg.date
                             latest_otp = msg
@@ -183,11 +184,10 @@ async def get_otp(client, message):
             text += f"{i}. 📞 `{phone_number}`\n"
             buttons.append([InlineKeyboardButton(f"Fetch OTP for {phone_number}", callback_data=f"fetch_otp_{i}")])
 
-        except AuthKeyUnregistered:
-            await db.remove_session(user_id, session)  # Remove expired session
         except Exception as e:
             print(f"DEBUG: Error in session {i}: {e}")
             await message.reply(f"⚠️ Couldn't fetch OTP for `{phone_number}`. Try logging in again.")
+            await db.remove_session(user_id, session)  # Remove expired session
 
     if not valid_sessions:
         return await message.reply("⚠️ No valid sessions found. Please re-login.")
