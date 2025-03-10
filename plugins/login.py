@@ -14,57 +14,60 @@ from pyrogram.errors import AuthKeyUnregistered PeerIdInvalid
 SESSION_STRING_SIZE = 351
 
 
-@Client.on_message(filters.private & filters.user(ADMINS) & filters.command('login')) async def login(bot: Client, message: Message): user_id = message.from_user.id user_sessions = await db.get_sessions(user_id)
+@Client.on_message(filters.private & filters.user(ADMINS) & filters.command('login'))
+async def login(bot: Client, message: Message):   
+    user_id = message.from_user.id
+    user_sessions = await db.get_sessions(user_id)
 
-if len(user_sessions) >= 3:  # Set a session limit (change as needed)
-    return await message.reply("⚠️ You have reached the maximum session limit. Remove an old session before adding a new one.")
+    if len(user_sessions) >= 3:  # Set a session limit (change as needed)
+        return await message.reply("⚠️ You have reached the maximum session limit. Remove an old session before adding a new one.")
 
-phone_number_msg = await bot.ask(user_id, "<b>Send your phone number including the country code.</b>\nExample: <code>+13124562345, +917182818189</code>")
-if phone_number_msg.text == '/cancel':
-    return await phone_number_msg.reply('<b>Process cancelled!</b>')
+    phone_number_msg = await bot.ask(user_id, "<b>Send your phone number including the country code.</b>\nExample: <code>+13124562345, +917182818189</code>")
+    if phone_number_msg.text == '/cancel':
+        return await phone_number_msg.reply('<b>Process cancelled!</b>')
 
-phone_number = phone_number_msg.text
-client = Client(":memory:", APP_ID, API_HASH)
-await client.connect()
-await phone_number_msg.reply("Sending OTP...")
+    phone_number = phone_number_msg.text
+    client = Client(":memory:", APP_ID, API_HASH)
+    await client.connect()
+    await phone_number_msg.reply("Sending OTP...")
 
-try:
-    code = await client.send_code(phone_number)
-    phone_code_msg = await bot.ask(user_id, "Enter the OTP as `1 2 3 4 5`.\nType /cancel to cancel.", filters=filters.text, timeout=600)
-except PhoneNumberInvalid:
-    return await phone_number_msg.reply('⚠️ Invalid phone number.')
-
-if phone_code_msg.text == '/cancel':
-    return await phone_code_msg.reply('<b>Process cancelled!</b>')
-
-try:
-    phone_code = phone_code_msg.text.replace(" ", "")
-    await client.sign_in(phone_number, code.phone_code_hash, phone_code)
-except PhoneCodeInvalid:
-    return await phone_code_msg.reply('⚠️ Invalid OTP.')
-except PhoneCodeExpired:
-    return await phone_code_msg.reply('⚠️ OTP expired.')
-except SessionPasswordNeeded:
-    password_msg = await bot.ask(user_id, 'Enter your two-step verification password.\nType /cancel to cancel.', filters=filters.text, timeout=300)
-    if password_msg.text == '/cancel':
-        return await password_msg.reply('<b>Process cancelled!</b>')
     try:
-        await client.check_password(password_msg.text)
-    except PasswordHashInvalid:
-        return await password_msg.reply('⚠️ Incorrect password.')
+        code = await client.send_code(phone_number)
+        phone_code_msg = await bot.ask(user_id, "Enter the OTP as `1 2 3 4 5`.\nType /cancel to cancel.", filters=filters.text, timeout=600)
+    except PhoneNumberInvalid:
+        return await phone_number_msg.reply('⚠️ Invalid phone number.')
 
-session_string = await client.export_session_string()
-await client.disconnect()
+    if phone_code_msg.text == '/cancel':
+        return await phone_code_msg.reply('<b>Process cancelled!</b>')
 
-if len(session_string) < SESSION_STRING_SIZE:
-    return await message.reply('<b>Invalid session string.</b>')
+    try:
+        phone_code = phone_code_msg.text.replace(" ", "")
+        await client.sign_in(phone_number, code.phone_code_hash, phone_code)
+    except PhoneCodeInvalid:
+        return await phone_code_msg.reply('⚠️ Invalid OTP.')
+    except PhoneCodeExpired:
+        return await phone_code_msg.reply('⚠️ OTP expired.')
+    except SessionPasswordNeeded:
+        password_msg = await bot.ask(user_id, 'Enter your two-step verification password.\nType /cancel to cancel.', filters=filters.text, timeout=300)
+        if password_msg.text == '/cancel':
+            return await password_msg.reply('<b>Process cancelled!</b>')
+        try:
+            await client.check_password(password_msg.text)
+        except PasswordHashInvalid:
+            return await password_msg.reply('⚠️ Incorrect password.')
 
-try:
-    await db.add_session(user_id, session_string, phone_number)  # Save with phone number
-except Exception as e:
-    return await message.reply(f"⚠️ Error in login: `{e}`")
+    session_string = await client.export_session_string()
+    await client.disconnect()
 
-await bot.send_message(user_id, "<b>Account logged in successfully.\nUse /session to view all your sessions.</b>")
+    if len(session_string) < SESSION_STRING_SIZE:
+        return await message.reply('<b>Invalid session string.</b>')
+
+    try:
+        await db.add_session(user_id, session_string, phone_number)  # Save with phone number
+    except Exception as e:
+        return await message.reply(f"⚠️ Error in login: `{e}`")
+
+    await bot.send_message(user_id, "<b>Account logged in successfully.\nUse /session to view all your sessions.</b>")
 
 
 @Client.on_message(filters.private & filters.user(ADMINS) & filters.command('session'))
