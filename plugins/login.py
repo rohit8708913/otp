@@ -3,12 +3,12 @@ from pyrogram.types import Message
 from pyrogram import Client, filters
 from asyncio.exceptions import TimeoutErroг
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from pyrogram.errors import ( ApiIdInvalid, Phone NumberInvalid, PhoneCode Invalid, PhoneCodeExpired, SessionPasswordNeeded, PasswordHashInvalid)
+from pyrogram.errors import ApiIdInvalid, Phone NumberInvalid, PhoneCode Invalid, PhoneCodeExpired, SessionPasswordNeeded, PasswordHashInvalid
 from config import *
 from database.database import *
 from pyrogram.raw import functions, types
 import asyncio
-from pyrogram.errors import AuthKeyUnregistered PeerIdInvalid
+from pyrogram.errors import AuthKeyUnregistered, PeerIdInvalid
 
 
 SESSION_STRING_SIZE = 351
