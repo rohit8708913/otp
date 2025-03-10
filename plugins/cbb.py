@@ -65,8 +65,8 @@ async def callback_handler(client: Client, query: CallbackQuery):
         if session_index >= len(user_sessions):
             return await query.answer("⚠️ Invalid session selection.", show_alert=True)
 
-        session_to_remove = user_sessions[session_index]['session']
-        phone_number = user_sessions[session_index]['phone_number']
+        session_to_remove = user_sessions[session_index]["session"]
+        phone_number = user_sessions[session_index]["phone_number"]
 
         await db.remove_session(user_id, session_to_remove)
         await query.message.edit_text(f"✅ Session for `{phone_number}` removed successfully!")
