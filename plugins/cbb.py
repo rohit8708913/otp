@@ -59,26 +59,32 @@ async def callback_handler(client: Client, query: CallbackQuery):
         )
 
     elif data.startswith("logout_"):
-        session_index = int(data.split("_")[-1]) - 1  # Extract session index
-        user_sessions = await db.get_sessions(user_id)
+        user_id = query.from_user.id
+        session_index = int(query.data.split("_")[-1]) - 1  # Extract session index
 
+        user_sessions = await db.get_sessions(user_id)
         if session_index >= len(user_sessions):
             return await query.answer("⚠️ Invalid session selection.", show_alert=True)
 
-        session_to_remove = user_sessions[session_index]  # Use session string directly
+        session_to_remove = user_sessions[session_index]  # Extract session data
+        session_string = session_to_remove["session"]
+        phone_number = session_to_remove["phone_number"]
 
         try:
-            uclient = Client(":memory:", session_string=session_to_remove, api_id=APP_ID, api_hash=API_HASH)
+        # Connect to Telegram and log out
+            uclient = Client(":memory:", session_string=session_string, api_id=APP_ID, api_hash=API_HASH)
             await uclient.connect()
-            me = await uclient.get_me()
-            phone_number = me.phone_number
+            await uclient.log_out()  # Log out properly
             await uclient.disconnect()
-        except:
-            phone_number = "Unknown"
+        except Exception as e:
+            print(f"DEBUG: Logout failed: {e}")
+    
+    # Remove session from database
+        await db.remove_session(user_id, session_string)
 
-        await db.remove_session(user_id, session_to_remove)
         await query.message.edit_text(f"✅ Session for `{phone_number}` removed successfully!")
 
+        
     elif data.startswith("fetch_otp_"):
         session_index = int(data.split("_")[-1]) - 1
         user_sessions = await db.get_sessions(user_id)
@@ -136,3 +142,4 @@ async def callback_handler(client: Client, query: CallbackQuery):
             print(f"DEBUG: Error fetching OTP: {e}")
             await query.message.reply(f"⚠️ Couldn't fetch OTP for `{phone_number}`. Try logging in again.")
             await db.remove_session(user_id, session)  # Remove expired session
+
