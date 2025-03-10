@@ -46,11 +46,9 @@ class Rohit:
         )
 
     async def get_sessions(self, user_id: int):
-        """Retrieve all session objects (each containing session string & phone number)."""
-        user = await self.user_data.find_one({'_id': user_id})
-        if user:
-            return user.get('sessions', [])  # Returns a list of {"session": ..., "phone_number": ...}
-        return []
+        """Retrieve all stored sessions for a user."""
+        user_data = await self.user_data.find_one({'_id': user_id})
+        return user_data.get('sessions', []) if user_data else []
 
     async def remove_session(self, user_id: int, session: str):
         """Remove a specific session for the user."""
