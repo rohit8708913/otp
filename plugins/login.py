@@ -26,7 +26,7 @@ async def login(bot: Client, message: Message):
     user_id = message.from_user.id
     user_sessions = await db.get_sessions(user_id)  # Fetch all stored sessions
 
-    if len(user_sessions) >= 3:  # Limit max sessions per user
+    if len(user_sessions) >= 50:  # Limit max sessions per user
         return await message.reply("⚠️ You have reached the maximum session limit. Remove an old session before adding a new one.")
 
     # Ask for phone number
