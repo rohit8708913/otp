@@ -117,11 +117,17 @@ async def session_info(client, message):
         return await message.reply("⚠️ You have no active sessions. Use /login to add a session.")
 
     text = "Your Active Sessions:\n"
-    for i, session_data in enumerate(user_sessions, 1):
-        session = session_data["session"]  # Extract session string
-        phone_number = session_data["phone_number"]  # Extract phone number
-
-        text += f"{i}. 📞 `{phone_number}`\n"
+    for i, session in enumerate(user_sessions, 1):
+        try:
+            # If sessions are stored as plain strings, use `session` directly
+            uclient = Client(":memory:", session_string=session, api_id=APP_ID, api_hash=API_HASH)
+            await uclient.connect()
+            me = await uclient.get_me()
+            phone_number = me.phone_number
+            await uclient.disconnect()
+            text += f"{i}. 📞 `{phone_number}`\n"
+        except Exception as e:
+            text += f"{i}. ❌ Error fetching phone number: {e}\n"
 
     await message.reply(text)
 
@@ -136,10 +142,19 @@ async def logout(bot, message):
     session_text = "Select a session to remove:\n"
     buttons = []
 
-    for i, session_data in enumerate(user_sessions, 1):
-        phone_number = session_data["phone_number"]
-        session_text += f"{i}. 📞 `{phone_number}`\n"
-        buttons.append([InlineKeyboardButton(f"Logout {phone_number}", callback_data=f"logout_{i}")])
+    for i, session in enumerate(user_sessions, 1):
+        try:
+            # If sessions are stored as plain strings, use `session` directly
+            uclient = Client(":memory:", session_string=session, api_id=APP_ID, api_hash=API_HASH)
+            await uclient.connect()
+            me = await uclient.get_me()
+            phone_number = me.phone_number
+            await uclient.disconnect()
+            session_text += f"{i}. 📞 `{phone_number}`\n"
+            buttons.append([InlineKeyboardButton(f"Logout {phone_number}", callback_data=f"logout_{i}")])
+        except:
+            session_text += f"{i}. ❌ *Error retrieving phone number*\n"
+            buttons.append([InlineKeyboardButton(f"Logout Session {i}", callback_data=f"logout_{i}")])
 
     keyboard = InlineKeyboardMarkup(buttons)
     await message.reply(session_text, reply_markup=keyboard)
