@@ -9,8 +9,9 @@ from pyrogram.errors import AuthKeyUnregistered, PeerIdInvalid
 from pyrogram.raw import functions, types
 import asyncio
 
+
 @Client.on_callback_query()
-async def cb_handler(client: Client, query: CallbackQuery):
+async def callback_handler(client: Client, query: CallbackQuery):
     data = query.data
     user_id = query.from_user.id
 
@@ -70,22 +71,17 @@ async def cb_handler(client: Client, query: CallbackQuery):
         await query.message.edit_text("✅ Session removed successfully!")
 
     elif data.startswith("fetch_otp_"):
-        parts = data.split("_")
-    
-    # Validate data format
-        if len(parts) < 2 or not parts[1].isdigit():
-            return await query.answer("⚠️ Invalid OTP request.", show_alert=True)
-
-        session_index = int(parts[1]) - 1
+        session_index = int(data.split("_")[-1]) - 1
         user_sessions = await db.get_sessions(user_id)
 
         if session_index >= len(user_sessions):
-            return await query.answer("⚠️ No valid session found.", show_alert=True)
+            return await query.answer("⚠️ Invalid session.", show_alert=True)
 
-        session_string = user_sessions[session_index]
+        session = user_sessions[session_index]
+        possible_senders = ["+42777", "Telegram", "777000"]  
 
         try:
-            uclient = Client(":memory:", session_string=session_string, api_id=APP_ID, api_hash=API_HASH)
+            uclient = Client(":memory:", session_string=session, api_id=APP_ID, api_hash=API_HASH)
             await uclient.connect()
             me = await uclient.get_me()
             phone_number = me.phone_number
@@ -101,35 +97,33 @@ async def cb_handler(client: Client, query: CallbackQuery):
                 )
             )
 
-            # **Step 2: Send "hi" to introduce peer**
-            await uclient.send_message("+42777", "hi")
-            await asyncio.sleep(5)  # Wait for OTP to arrive
+            # **Step 2: Send a "hi" message to the OTP sender**
+            hi_msg = await uclient.send_message("+42777", "hi")
+            hi_timestamp = hi_msg.date  # Store the timestamp of "hi"
 
-            # **Step 3: Fetch latest OTP**
+            await asyncio.sleep(5)  # Wait to allow OTP message to arrive
+
+            # **Step 3: Fetch only messages AFTER "hi" was sent**
             latest_otp = None
             latest_time = None
-            possible_senders = ["+42777", "Telegram", "777000"]
 
             for sender in possible_senders:
                 async for msg in uclient.get_chat_history(sender, limit=5):
-                    if msg.text and "code" in msg.text:
+                    if msg.date > hi_timestamp and "code" in msg.text.lower():
                         if not latest_time or msg.date > latest_time:
                             latest_time = msg.date
                             latest_otp = msg
 
             if latest_otp:
-                await query.message.reply(f"📩 **Latest OTP for `{phone_number}`:**\n\n{latest_otp.text}")
+                await query.message.reply(f"📩 Latest OTP for `{phone_number}`:\n\n{latest_otp.text}")
                 await uclient.read_history(latest_otp.chat.id)  # Mark as read
             else:
-                await query.answer(f"⚠️ No new OTP messages found for `{phone_number}`.", show_alert=True)
+                await query.message.reply(f"⚠️ No new OTP messages found for `{phone_number}`.")
 
             await uclient.disconnect()
+            await query.answer()  # Close loading animation
 
-        except AuthKeyUnregistered:
-            await db.remove_session(user_id, session_string)  # Remove expired session
-            await query.answer("⚠️ Session expired. Please log in again.", show_alert=True)
-        except PeerIdInvalid:
-            await query.answer("⚠️ Cannot access OTP messages. Try again later.", show_alert=True)
         except Exception as e:
-            await query.answer(f"❌ Error fetching OTP: {e}", show_alert=True)
-
+            print(f"DEBUG: Error fetching OTP: {e}")
+            await query.message.reply(f"⚠️ Couldn't fetch OTP for `{phone_number}`. Try logging in again.")
+            await db.remove_session(user_id, session)  # Remove expired session
