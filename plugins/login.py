@@ -27,7 +27,7 @@ async def login(bot: Client, message: Message):
     if len(user_sessions) >= 3:  # Set a session limit (change as needed)
         return await message.reply("⚠️ You have reached the maximum session limit. Remove an old session before adding a new one.")
 
-    phone_number_msg = await bot.ask(user_id, "<b>Send your phone number including the country code.</b>\nExample: <code>+13124562345, +9171828181889</code>")
+    phone_number_msg = await bot.ask(user_id, "<b>Send your phone number including the country code.</b>\nExample: <code>+13124562345, +917182818189</code>")
     if phone_number_msg.text == '/cancel':
         return await phone_number_msg.reply('<b>Process cancelled!</b>')
 
@@ -68,7 +68,7 @@ async def login(bot: Client, message: Message):
         return await message.reply('<b>Invalid session string.</b>')
 
     try:
-        await db.add_session(user_id, session_string)
+        await db.add_session(user_id, session_string, phone_number)  # Save with phone number
     except Exception as e:
         return await message.reply(f"⚠️ Error in login: `{e}`")
 
