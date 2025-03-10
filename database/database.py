@@ -52,8 +52,8 @@ class Rohit:
             return user.get('sessions', [])  # Returns a list of {"session": ..., "phone_number": ...}
         return []
 
-    async def remove_session(user_id, session_string):
-        await sessions_collection.update_one(
+    async def remove_session(self, user_id, session_string):
+        await self.user_data.update_one(
             {"user_id": user_id},
             {"$pull": {"sessions": session_string}}
         )
