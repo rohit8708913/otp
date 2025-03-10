@@ -118,26 +118,33 @@ async def session_info(client, message):
 
     await message.reply(text)
 
-@Client.on_message(filters.private & filters.command('logout'))
+@Client.on_message(filters.private & filters.user(ADMINS) & filters.command('logout'))
 async def logout(bot: Client, message: Message):
     user_id = message.from_user.id
-    user_sessions = await db.get_sessions(user_id)  # Fetch all stored sessions
+    user_sessions = await db.get_sessions(user_id)  # Fetch sessions
 
     if not user_sessions:
         return await message.reply("⚠️ You have no active sessions to log out.")
 
-    # Ask the user to select a session to remove
-    buttons = [
-        [InlineKeyboardButton(f"📱 {session['phone_number']}", callback_data=f"logout_{index}")]
-        for index, session in enumerate(user_sessions, start=1)
-    ]
-    buttons.append([InlineKeyboardButton("❌ Cancel", callback_data="close")])
+    try:
+        # Ensure user_sessions is a list of dictionaries
+        if isinstance(user_sessions[0], str):  # If sessions are stored as plain strings
+            user_sessions = [{"session": s, "phone_number": "Unknown"} for s in user_sessions]
 
-    await message.reply(
-        "🔽 **Select a session to remove:**",
-        reply_markup=InlineKeyboardMarkup(buttons)
-    )
+        # Generate buttons for each session
+        buttons = [
+            [InlineKeyboardButton(f"📱 {session.get('phone_number', 'Unknown')}", callback_data=f"logout_{index}")]
+            for index, session in enumerate(user_sessions, start=1)
+        ]
+        buttons.append([InlineKeyboardButton("❌ Cancel", callback_data="close")])
 
+        await message.reply(
+            "🔽 **Select a session to remove:**",
+            reply_markup=InlineKeyboardMarkup(buttons)
+        )
+    except Exception as e:
+        print(f"DEBUG: Error in logout command - {e}")
+        await message.reply("⚠️ Error fetching session data.")
 
 @Client.on_message(filters.private & filters.user(ADMINS) & filters.command('otp'))
 async def show_sessions(client, message):
