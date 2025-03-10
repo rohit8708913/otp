@@ -1,3 +1,19 @@
+import traceback
+from pyrogram.types import Message
+from pyrogram import Client, filters
+from asyncio.exceptions import TimeoutErroг
+from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from pyrogram.errors import ( ApiIdInvalid, Phone NumberInvalid, PhoneCode Invalid, PhoneCodeExpired, SessionPasswordNeeded, PasswordHashInvalid)
+from config import *
+from database.database import *
+from pyrogram.raw import functions, types
+import asyncio
+from pyrogram.errors import AuthKeyUnregistered PeerIdInvalid
+
+
+SESSION_STRING_SIZE = 351
+
+
 @Client.on_message(filters.private & filters.user(ADMINS) & filters.command('login')) async def login(bot: Client, message: Message): user_id = message.from_user.id user_sessions = await db.get_sessions(user_id)
 
 if len(user_sessions) >= 3:  # Set a session limit (change as needed)
