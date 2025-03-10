@@ -85,7 +85,9 @@ async def session_info(client, message):
 
     text = "Your Active Sessions:\n"
     for i, session_data in enumerate(user_sessions, 1):
-        phone_number = session_data['phone_number']
+        session = session_data["session"]  # Extract session string
+        phone_number = session_data["phone_number"]  # Extract phone number
+
         text += f"{i}. 📞 `{phone_number}`\n"
 
     await message.reply(text)
@@ -102,7 +104,7 @@ async def logout(bot, message):
     buttons = []
 
     for i, session_data in enumerate(user_sessions, 1):
-        phone_number = session_data['phone_number']
+        phone_number = session_data["phone_number"]
         session_text += f"{i}. 📞 `{phone_number}`\n"
         buttons.append([InlineKeyboardButton(f"Logout {phone_number}", callback_data=f"logout_{i}")])
 
