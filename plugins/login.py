@@ -38,7 +38,7 @@ async def login(bot: Client, message: Message):
 
     phone_number = phone_number_msg.text.strip()
     
-    client = Client(":memory:", API_ID, API_HASH)
+    client = Client(":memory:", APP_ID, API_HASH)
     await client.connect()
     await phone_number_msg.reply("Sending OTP...")
 
