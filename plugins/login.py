@@ -118,7 +118,7 @@ async def session_info(client, message):
 
     await message.reply(text)
 
-@Client.on_message(filters.private & is_admin & filters.command('logout'))
+@Client.on_message(filters.private & filters.command('logout'))
 async def logout(bot: Client, message: Message):
     user_id = message.from_user.id
     user_sessions = await db.get_sessions(user_id)  # Fetch all stored sessions
