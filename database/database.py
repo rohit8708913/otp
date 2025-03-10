@@ -52,12 +52,12 @@ class Rohit:
             return user.get('sessions', [])  # Returns a list of {"session": ..., "phone_number": ...}
         return []
 
-    async def remove_session(self, user_id, session_string):
+    async def remove_session(self, user_id: int, session: str):
+        """Remove a specific session for the user."""
         await self.user_data.update_one(
-            {"user_id": user_id},
-            {"$pull": {"sessions": session_string}}
+            {'_id': user_id},
+            {'$pull': {'sessions': {'session': session}}}  # Remove only the matching session
         )
-
 
 # Initialize the database connection
 db = Rohit(DB_URI, DB_NAME)
