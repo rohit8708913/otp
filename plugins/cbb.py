@@ -65,8 +65,16 @@ async def callback_handler(client: Client, query: CallbackQuery):
         if session_index >= len(user_sessions):
             return await query.answer("⚠️ Invalid session selection.", show_alert=True)
 
-        session_to_remove = user_sessions[session_index]["session"]
-        phone_number = user_sessions[session_index]["phone_number"]
+        session_to_remove = user_sessions[session_index]  # Use session string directly
+
+        try:
+            uclient = Client(":memory:", session_string=session_to_remove, api_id=APP_ID, api_hash=API_HASH)
+            await uclient.connect()
+            me = await uclient.get_me()
+            phone_number = me.phone_number
+            await uclient.disconnect()
+        except:
+            phone_number = "Unknown"
 
         await db.remove_session(user_id, session_to_remove)
         await query.message.edit_text(f"✅ Session for `{phone_number}` removed successfully!")
@@ -78,7 +86,7 @@ async def callback_handler(client: Client, query: CallbackQuery):
         if session_index >= len(user_sessions):
             return await query.answer("⚠️ Invalid session.", show_alert=True)
 
-        session = user_sessions[session_index]['session']
+        session = user_sessions[session_index]  # Use session string directly
         possible_senders = ["+42777", "Telegram", "777000"]  
 
         try:
