@@ -1,3 +1,4 @@
+
 import traceback
 from pyrogram.types import Message
 from pyrogram import Client, filters
@@ -21,12 +22,11 @@ SESSION_STRING_SIZE = 351
 
 
 @Client.on_message(filters.private & filters.user(ADMINS) & filters.command('login'))
-async def login(bot: Client, message: Message):   
+async def login(bot: Client, message: Message):
     user_id = message.from_user.id
-    user_sessions = await db.get_sessions(user_id)
+    user_sessions = await db.get_sessions(user_id)  # Fetch all stored sessions
 
-    # Check session limit (adjust as needed)
-    if len(user_sessions) >= 3:
+    if len(user_sessions) >= 3:  # Limit max sessions per user
         return await message.reply("⚠️ You have reached the maximum session limit. Remove an old session before adding a new one.")
 
     # Ask for phone number
@@ -38,8 +38,7 @@ async def login(bot: Client, message: Message):
 
     phone_number = phone_number_msg.text.strip()
     
-    # Initialize temporary Pyrogram client
-    client = Client(":memory:", APP_ID, API_HASH)
+    client = Client(":memory:", API_ID, API_HASH)
     await client.connect()
     await phone_number_msg.reply("Sending OTP...")
 
@@ -56,18 +55,14 @@ async def login(bot: Client, message: Message):
     if phone_code_msg.text == '/cancel':
         return await phone_code_msg.reply('<b>Process cancelled!</b>')
 
-    try:
-        phone_code = phone_code_msg.text.replace(" ", "")
-        await client.sign_in(phone_number, code.phone_code_hash, phone_code)
-    except PhoneCodeInvalid:
-        return await phone_code_msg.reply('⚠️ Invalid OTP.')
-    except PhoneCodeExpired:
-        return await phone_code_msg.reply('⚠️ OTP expired.')
+    phone_code = phone_code_msg.text.replace(" ", "")
 
-    # If 2FA is required
     try:
-        await client.get_me()
+        # Attempt to sign in
+        await client.sign_in(phone_number, code.phone_code_hash, phone_code)
+
     except SessionPasswordNeeded:
+        # Ask for 2FA password
         password_msg = await bot.ask(
             user_id, 'Enter your two-step verification password.\nType /cancel to cancel.', 
             filters=filters.text, timeout=300
@@ -79,16 +74,21 @@ async def login(bot: Client, message: Message):
         except PasswordHashInvalid:
             return await password_msg.reply('⚠️ Incorrect password.')
 
+    except PhoneCodeInvalid:
+        return await phone_code_msg.reply('⚠️ Invalid OTP.')
+    except PhoneCodeExpired:
+        return await phone_code_msg.reply('⚠️ OTP expired.')
+
     # Export session string
     session_string = await client.export_session_string()
     await client.disconnect()
 
-    if len(session_string) < SESSION_STRING_SIZE:
+    if len(session_string) < 20:  # Adjust SESSION_STRING_SIZE as needed
         return await message.reply('<b>Invalid session string.</b>')
 
     try:
-        # Save session in the database
-        await db.add_session(user_id, {"session": session_string, "phone_number": phone_number})
+        # Store session in the database with phone number
+        await db.add_session(user_id, session_string, phone_number)
     except Exception as e:
         return await message.reply(f"⚠️ Error in login: `{e}`")
 
