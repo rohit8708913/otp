@@ -36,16 +36,16 @@ class Rohit:
         await self.user_data.delete_one({'_id': user_id})
         return
 
-    async def add_session(self, user_id: int, session: str):
-        """Add a new session string for the user in the database."""
+    async def add_session(self, user_id: int, session: str, phone_number: str):
+        """Add a new session string with phone number for the user in the database."""
         await self.user_data.update_one(
             {'_id': user_id},
-            {'$push': {'sessions': session}},  # Add session to the list
+            {'$push': {'sessions': {'session': session, 'phone_number': phone_number}}},  # Store both
             upsert=True
         )
 
     async def get_sessions(self, user_id: int):
-        """Retrieve all session strings for the user from the database."""
+        """Retrieve all session details (session string + phone number) for the user."""
         user = await self.user_data.find_one({'_id': user_id})
         if user:
             return user.get('sessions', [])
@@ -55,14 +55,7 @@ class Rohit:
         """Remove a specific session string from the user's session list."""
         await self.user_data.update_one(
             {'_id': user_id},
-            {'$pull': {'sessions': session}}  # Remove session from the list
-        )
-
-    async def clear_sessions(self, user_id: int):
-        """Remove all session strings for the user."""
-        await self.user_data.update_one(
-            {'_id': user_id},
-            {'$set': {'sessions': []}}  # Clear all sessions
+            {'$pull': {'sessions': {'session': session}}}  # Remove based on session string
         )
 
 
