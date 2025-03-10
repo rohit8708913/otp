@@ -17,7 +17,7 @@ from pyrogram.raw import functions, types
 import asyncio
 from pyrogram.errors import AuthKeyUnregistered, PeerIdInvalid
  
- SESSION_STRING_SIZE = 351
+SESSION_STRING_SIZE = 351
 
 
 @Client.on_message(filters.private & filters.user(ADMINS) & filters.command('login'))
