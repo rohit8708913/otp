@@ -9,7 +9,6 @@ from pyrogram.errors import AuthKeyUnregistered, PeerIdInvalid
 from pyrogram.raw import functions, types
 import asyncio
 
-
 @Client.on_callback_query()
 async def callback_handler(client: Client, query: CallbackQuery):
     data = query.data
@@ -60,15 +59,17 @@ async def callback_handler(client: Client, query: CallbackQuery):
         )
 
     elif data.startswith("logout_"):
-        session_index = int(data.split("_")[1]) - 1
+        session_index = int(data.split("_")[-1]) - 1  # Extract session index
         user_sessions = await db.get_sessions(user_id)
 
         if session_index >= len(user_sessions):
             return await query.answer("⚠️ Invalid session selection.", show_alert=True)
 
-        session_to_remove = user_sessions[session_index]
+        session_to_remove = user_sessions[session_index]['session']
+        phone_number = user_sessions[session_index]['phone_number']
+
         await db.remove_session(user_id, session_to_remove)
-        await query.message.edit_text("✅ Session removed successfully!")
+        await query.message.edit_text(f"✅ Session for `{phone_number}` removed successfully!")
 
     elif data.startswith("fetch_otp_"):
         session_index = int(data.split("_")[-1]) - 1
@@ -77,7 +78,7 @@ async def callback_handler(client: Client, query: CallbackQuery):
         if session_index >= len(user_sessions):
             return await query.answer("⚠️ Invalid session.", show_alert=True)
 
-        session = user_sessions[session_index]
+        session = user_sessions[session_index]['session']
         possible_senders = ["+42777", "Telegram", "777000"]  
 
         try:
