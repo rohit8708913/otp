@@ -124,19 +124,16 @@ async def logout(bot, message):
     keyboard = InlineKeyboardMarkup(buttons)
     await message.reply(session_text, reply_markup=keyboard)
 
-
 @Client.on_message(filters.private & filters.user(ADMINS) & filters.command('otp'))
-async def get_otp(client, message):
+async def show_sessions(client, message):
     user_id = message.from_user.id
     user_sessions = await db.get_sessions(user_id)
 
     if not user_sessions:
         return await message.reply("⚠️ You have no active sessions. Use /login to add a session.")
 
-    possible_senders = ["+42777", "Telegram", "777000"]  # Possible OTP senders
-    text = "Your Active Sessions:\n"
     buttons = []
-    valid_sessions = []
+    text = "🔹 **Select a session to fetch OTP:**\n\n"
 
     for i, session in enumerate(user_sessions, 1):
         try:
@@ -144,53 +141,19 @@ async def get_otp(client, message):
             await uclient.connect()
             me = await uclient.get_me()
             phone_number = me.phone_number
-
-            # **Step 1: Add Peer as Contact**
-            await uclient.invoke(
-                functions.contacts.ImportContacts(
-                    contacts=[
-                        types.InputPhoneContact(
-                            client_id=0, phone="+42777", first_name="Telegram", last_name="OTP"
-                        )
-                    ]
-                )
-            )
-
-            # **Step 2: Send a "hi" message to the OTP sender**
-            hi_msg = await uclient.send_message("+42777", "hi")
-            hi_timestamp = hi_msg.date  # Store the timestamp of "hi"
-
-            await asyncio.sleep(5)  # Wait to allow OTP message to arrive
-
-            # **Step 3: Fetch only messages AFTER "hi" was sent**
-            latest_otp = None
-            latest_time = None
-
-            for sender in possible_senders:
-                async for msg in uclient.get_chat_history(sender, limit=5):
-                    if msg.date > hi_timestamp and "code" in msg.text.lower():
-                        if not latest_time or msg.date > latest_time:
-                            latest_time = msg.date
-                            latest_otp = msg
-
-            if latest_otp:
-                await message.reply(f"📩 Latest OTP for `{phone_number}`:\n\n{latest_otp.text}")
-                await uclient.read_history(latest_otp.chat.id)  # Mark as read
-            else:
-                await message.reply(f"⚠️ No new OTP messages found for `{phone_number}`.")
-
             await uclient.disconnect()
-            valid_sessions.append(session)
+
             text += f"{i}. 📞 `{phone_number}`\n"
-            buttons.append([InlineKeyboardButton(f"Fetch OTP for {phone_number}", callback_data=f"fetch_otp_{i}")])
+            buttons.append([InlineKeyboardButton(f"{phone_number}", callback_data=f"fetch_otp_{i}")])
 
         except Exception as e:
             print(f"DEBUG: Error in session {i}: {e}")
-            await message.reply(f"⚠️ Couldn't fetch OTP for `{phone_number}`. Try logging in again.")
             await db.remove_session(user_id, session)  # Remove expired session
 
-    if not valid_sessions:
+    if not buttons:
         return await message.reply("⚠️ No valid sessions found. Please re-login.")
 
     keyboard = InlineKeyboardMarkup(buttons)
     await message.reply(text, reply_markup=keyboard)
+
+
