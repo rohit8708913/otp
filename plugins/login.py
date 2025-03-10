@@ -118,33 +118,25 @@ async def session_info(client, message):
 
     await message.reply(text)
 
-@Client.on_message(filters.private & filters.user(ADMINS) & filters.command('logout'))
-async def logout(bot, message):
+@Client.on_message(filters.private & is_admin & filters.command('logout'))
+async def logout(bot: Client, message: Message):
     user_id = message.from_user.id
-    user_sessions = await db.get_sessions(user_id)
+    user_sessions = await db.get_sessions(user_id)  # Fetch all stored sessions
 
     if not user_sessions:
-        return await message.reply("⚠️ You have no active sessions.")
+        return await message.reply("⚠️ You have no active sessions to log out.")
 
-    session_text = "Select a session to remove:\n"
-    buttons = []
+    # Ask the user to select a session to remove
+    buttons = [
+        [InlineKeyboardButton(f"📱 {session['phone_number']}", callback_data=f"logout_{index}")]
+        for index, session in enumerate(user_sessions, start=1)
+    ]
+    buttons.append([InlineKeyboardButton("❌ Cancel", callback_data="close")])
 
-    for i, session in enumerate(user_sessions, 1):
-        try:
-            # If sessions are stored as plain strings, use `session` directly
-            uclient = Client(":memory:", session_string=session, api_id=APP_ID, api_hash=API_HASH)
-            await uclient.connect()
-            me = await uclient.get_me()
-            phone_number = me.phone_number
-            await uclient.disconnect()
-            session_text += f"{i}. 📞 `{phone_number}`\n"
-            buttons.append([InlineKeyboardButton(f"Logout {phone_number}", callback_data=f"logout_{i}")])
-        except:
-            session_text += f"{i}. ❌ *Error retrieving phone number*\n"
-            buttons.append([InlineKeyboardButton(f"Logout Session {i}", callback_data=f"logout_{i}")])
-
-    keyboard = InlineKeyboardMarkup(buttons)
-    await message.reply(session_text, reply_markup=keyboard)
+    await message.reply(
+        "🔽 **Select a session to remove:**",
+        reply_markup=InlineKeyboardMarkup(buttons)
+    )
 
 
 @Client.on_message(filters.private & filters.user(ADMINS) & filters.command('otp'))
